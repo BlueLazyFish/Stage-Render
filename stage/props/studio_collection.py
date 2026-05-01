@@ -57,6 +57,21 @@ class StudioCollection(PropertyGroup):
         description="In-blend storage schema version — used by core.migration",
     )
 
+    # Dirty-state tracking — see stage.handlers.depsgraph_update_post.
+    # last_applied_studio_uuid stamps which Studio the scene currently matches;
+    # dirty flips True when the scene mutates after that apply.
+    last_applied_studio_uuid: StringProperty(default="")
+    dirty: BoolProperty(
+        name="Dirty",
+        description="Scene has uncommitted changes since the last apply or update",
+        default=False,
+    )
+    # One-shot flag: Apply / Update operators set this True before returning
+    # so the post-operator depsgraph fire (which is caused by the operator's
+    # own scene writes) doesn't immediately re-flag the scene dirty. Handler
+    # consumes the flag and skips on the next fire.
+    suppress_next_dirty_fire: BoolProperty(default=False)
+
 
 def register() -> None:
     bpy.utils.register_class(StudioGroup)

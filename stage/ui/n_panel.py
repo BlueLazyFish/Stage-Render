@@ -43,6 +43,17 @@ class STAGE_PT_main(Panel):
         if data.studios and 0 <= data.active_index < len(data.studios):
             active = data.studios[data.active_index]
 
+            # Dirty-state badge — visible only when the scene was mutated after
+            # the last apply or update. Apply re-applies (discards changes);
+            # Update captures the current scene into the Studio.
+            if data.dirty:
+                row = layout.row()
+                row.alert = True
+                row.label(
+                    text="● Uncommitted changes — Update or Apply",
+                    icon='ERROR',
+                )
+
             # Apply / Update — the central operations
             row = layout.row(align=True)
             row.operator("stage.studio_apply", icon='IMPORT')

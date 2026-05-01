@@ -2,12 +2,17 @@
 
 Both operators use REGISTER + UNDO so each invocation produces exactly one
 labeled undo step (per the plan's undo policy in §5).
+
+They also manage the dirty-state flag: the scene is marked clean after apply
+or update, and stage.handlers.depsgraph_update_post re-marks it dirty on any
+subsequent scene mutation.
 """
 
 import bpy
 from bpy.types import Operator
 
 from ..core.facets import apply_all, capture_all
+from ..handlers import set_apply_in_progress
 from ..utils.logger import get_logger
 
 
@@ -28,7 +33,16 @@ class STAGE_OT_studio_apply(Operator):
     def execute(self, context):
         data = context.scene.stage_data
         studio = data.studios[data.active_index]
-        apply_all(context.scene, studio)
+        set_apply_in_progress(True)
+        try:
+            apply_all(context.scene, studio)
+            data.last_applied_studio_uuid = studio.uuid
+            data.dirty = False
+            # Absorb the post-operator depsgraph fire so it doesn't re-flag
+            # the scene dirty (the fire is caused by our own writes).
+            data.suppress_next_dirty_fire = True
+        finally:
+            set_apply_in_progress(False)
         self.report({'INFO'}, f"Applied: {studio.name}")
         _log.info("Applied Studio: %s", studio.name)
         return {'FINISHED'}
@@ -53,7 +67,14 @@ class STAGE_OT_studio_update_from_scene(Operator):
         if studio.locked:
             self.report({'WARNING'}, "Studio is locked — unlock to update")
             return {'CANCELLED'}
-        capture_all(context.scene, studio)
+        set_apply_in_progress(True)
+        try:
+            capture_all(context.scene, studio)
+            data.last_applied_studio_uuid = studio.uuid
+            data.dirty = False
+            data.suppress_next_dirty_fire = True
+        finally:
+            set_apply_in_progress(False)
         self.report({'INFO'}, f"Updated: {studio.name}")
         _log.info("Updated Studio from scene: %s", studio.name)
         return {'FINISHED'}
