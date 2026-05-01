@@ -534,7 +534,7 @@ Cache lives on disk via `bpy.app.cachedir/thumbnails/<studio_uuid>.png`, not in 
 ### Testing strategy
 - Headless Blender unit tests (`blender -b -P tests/test_studio_capture.py`) — Blender's bundled Python (3.13) can run pytest
 - **Round-trip invariant** as a Phase 1 deliverable — capture → mutate → restore → equal
-- **1000-Studio stress test** as a Phase 1 deliverable — measured each milestone
+- **1000-Studio stress test** as a Phase 1 deliverable — `scripts/stress.py`. First measurement shipped 2026-05-01 (see §6).
 - Sample .blends for regression: multi-camera, multi-scene, animated, complex visibility, material variants, GN modifier inputs, compositor variants, linked libraries, drivers
 - CI matrix: Blender 5.1 + 5.2-alpha × {Linux, macOS Intel, macOS Apple Silicon, Windows} — Apple Silicon is non-trivial (Renderset 2.0.1 shipped a fix specifically for M1/M2/M3 crashes)
 - Snapshot tests for facet capture/restore
@@ -544,7 +544,7 @@ Cache lives on disk via `bpy.app.cachedir/thumbnails/<studio_uuid>.png`, not in 
 
 ## 6. Risks & Open Questions
 
-- **Property storage scale.** Renderset's docs claim "up to a thousand contexts in one .blend file" — that's the bar to beat. A heavy scene with 200 Studios × 50 custom props each = 10k stored values. Performance on UI redraw and on save? Mitigation: lazy-load facet data, cache thumbnails on disk via `bpy.app.cachedir` not in .blend, paginate the Lister. Made a Phase 1 deliverable (see §5) so we learn fast.
+- **Property storage scale.** Renderset's docs claim "up to a thousand contexts in one .blend file" — bar matched. **Measured on 2026-05-01 (Blender 5.1, M-series Mac): 1000 Studios × 50 stored props (50k entries total) — add 40 ms, switch <1 ms, save 36 ms, load 38 ms, .blend size 3.8 MB.** Phase 1 stress-test script lives at `scripts/stress.py`. Mitigations stay in the design budget for v1.x if scale grows: lazy-load facet data, cache thumbnails on disk via `bpy.app.cachedir` not in .blend, paginate the Lister.
 - **`hide_viewport` cannot be stored.** Blender exposes `hide_render` (camera icon) and collection visibility, but the *eye icon* `hide_viewport` on individual objects is a UI-only flag with no persistence hook — Renderset hits this limit too. We surface it honestly: when a user tries to store eye-icon visibility, show a tooltip explaining the limitation and suggesting collection-based visibility instead.
 - **Override semantics: additive.** When a Studio captures only "camera + world", what happens to materials when you switch? Two valid models: *Additive* (only override what's stored, leave rest) or *Replacement* (everything not stored is "default"). **Pick additive — it's what users actually want.** Document it.
 - **Save-on-apply / dirty handling.** Switching Studios mutates the scene. The dirty-state indicator (an MVP feature) is the answer — it makes the user the source of truth for "should this change be persisted?". Auto-save before apply is optional and prefs-controlled.
