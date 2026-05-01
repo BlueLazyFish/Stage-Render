@@ -23,5 +23,9 @@ def register() -> None:
 
 
 def unregister() -> None:
+    # Tear down the preview cache before unregistering UI/etc. — the cache
+    # holds bpy.utils.previews handles that must be released cleanly.
+    from .utils import preview_cache
+    preview_cache.cleanup()
     for m in reversed(_modules()):
         m.unregister()

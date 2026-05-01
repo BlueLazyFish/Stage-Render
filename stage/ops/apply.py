@@ -62,6 +62,7 @@ class STAGE_OT_studio_update_from_scene(Operator):
         return not data.studios[data.active_index].locked
 
     def execute(self, context):
+        from ..core.thumbnails import render_thumbnail
         data = context.scene.stage_data
         studio = data.studios[data.active_index]
         if studio.locked:
@@ -70,6 +71,7 @@ class STAGE_OT_studio_update_from_scene(Operator):
         set_apply_in_progress(True)
         try:
             capture_all(context.scene, studio)
+            render_thumbnail(context.scene, studio)
             data.last_applied_studio_uuid = studio.uuid
             data.dirty = False
             data.suppress_next_dirty_fire = True

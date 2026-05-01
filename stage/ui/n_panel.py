@@ -58,6 +58,7 @@ class STAGE_PT_main(Panel):
             row = layout.row(align=True)
             row.operator("stage.studio_apply", icon='IMPORT')
             row.operator("stage.studio_update_from_scene", icon='FILE_REFRESH')
+            row.operator("stage.studio_refresh_thumbnail", icon='IMAGE_DATA', text="")
 
             box = layout.box()
             box.prop(active, "name")

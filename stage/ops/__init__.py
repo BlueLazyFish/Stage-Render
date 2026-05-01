@@ -2,9 +2,10 @@
 
 from . import studio_crud
 from . import apply
+from . import thumbnails
 
 
-_modules = (studio_crud, apply)
+_modules = (studio_crud, apply, thumbnails)
 
 
 def register() -> None:

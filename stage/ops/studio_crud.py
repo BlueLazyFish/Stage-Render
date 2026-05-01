@@ -21,12 +21,22 @@ class STAGE_OT_studio_add(Operator):
 
     def execute(self, context):
         from ..core.facets import capture_all
+        from ..core.thumbnails import render_thumbnail
+        from ..handlers import set_apply_in_progress
         data = context.scene.stage_data
         new_studio = data.studios.add()
         new_studio.name = self.name or "Studio"
         new_studio.uuid = str(uuid.uuid4())
         data.active_index = len(data.studios) - 1
-        capture_all(context.scene, new_studio)
+        set_apply_in_progress(True)
+        try:
+            capture_all(context.scene, new_studio)
+            render_thumbnail(context.scene, new_studio)
+            data.last_applied_studio_uuid = new_studio.uuid
+            data.dirty = False
+            data.suppress_next_dirty_fire = True
+        finally:
+            set_apply_in_progress(False)
         self.report({'INFO'}, f"Added Studio: {new_studio.name}")
         return {'FINISHED'}
 
