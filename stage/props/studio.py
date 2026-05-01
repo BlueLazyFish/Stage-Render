@@ -81,7 +81,11 @@ class Studio(PropertyGroup):
 
     tags: StringProperty(
         name="Tags",
-        description="Comma-separated tags (e.g. 'wip, client-a, final')",
+        description=(
+            "Comma-separated tags (e.g. 'wip, client-a, final'). "
+            "Use the filter funnel at the bottom of the Studio list to "
+            "filter by tag — substring matches both name and tags."
+        ),
         default="",
     )
 
