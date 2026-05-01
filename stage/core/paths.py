@@ -91,11 +91,13 @@ def build_default_context(
         "studio": studio_name,
         "studio_group": studio_group,
         "context_render_type": render_type,
-        # File
+        # File. as_posix() forces forward slashes on every platform — matches
+        # Blender's own filepath convention (it stores paths with / even on
+        # Windows) and keeps unit tests platform-agnostic.
         "blendname": blend.stem if blend.name else "",
         "blend_filename": blend.stem if blend.name else "",
-        "blend_parent_folder": str(blend.parent) if blend.name else "",
-        "blend_full_path": str(blend) if blend.name else "",
+        "blend_parent_folder": blend.parent.as_posix() if blend.name else "",
+        "blend_full_path": blend.as_posix() if blend.name else "",
         # Frame
         "frame": frame,
         "frame_current": frame,
