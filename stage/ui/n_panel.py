@@ -63,24 +63,37 @@ class STAGE_PT_main(Panel):
             row.operator("stage.studio_render_all", icon='RENDER_STILL', text="Render All")
 
             box = layout.box()
-            box.prop(active, "name")
+
+            # Lock toggle — always editable so the user can unlock from the
+            # same UI that's otherwise greyed out.
+            row = box.row()
+            row.prop(
+                active, "locked",
+                icon='LOCKED' if active.locked else 'UNLOCKED',
+            )
+
+            # Everything below: read-only when the Studio is locked.
+            details = box.column()
+            details.enabled = not active.locked
+
+            details.prop(active, "name")
 
             # Output Path — label on its own line so the field gets full width
-            col = box.column(align=True)
+            col = details.column(align=True)
             col.label(text="Output Path:")
             col.prop(active, "output_override", text="")
 
             # Facet capture toggles — what this Studio remembers
-            sub = box.column(align=True)
-            sub.label(text="Capture:")
-            sub.prop(active, "facet_camera_enabled", text="Camera")
-            sub.prop(active, "facet_world_enabled", text="World")
-            sub.prop(active, "facet_visibility_enabled", text="Visibility")
-            sub.prop(active, "facet_render_enabled", text="Render Settings")
-            sub.prop(active, "facet_output_path_enabled", text="Output Path")
+            fcol = details.column(align=True)
+            fcol.label(text="Capture:")
+            fcol.prop(active, "facet_camera_enabled", text="Camera")
+            fcol.prop(active, "facet_world_enabled", text="World")
+            fcol.prop(active, "facet_visibility_enabled", text="Visibility")
+            fcol.prop(active, "facet_render_enabled", text="Render Settings")
+            fcol.prop(active, "facet_output_path_enabled", text="Output Path")
 
-            box.prop(active, "notes")
-            box.prop(active, "tags")
+            details.prop(active, "notes")
+            details.prop(active, "tags")
 
 
 _classes = (STAGE_PT_main,)

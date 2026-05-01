@@ -49,9 +49,15 @@ class STAGE_OT_studio_remove(Operator):
 
     @classmethod
     def poll(cls, context):
-        # Active Studio invariant: keep at least one
         data = context.scene.stage_data
-        return len(data.studios) > 1
+        # Active Studio invariant: keep at least one
+        if len(data.studios) <= 1:
+            return False
+        # Locked Studios refuse removal — unlock first
+        idx = data.active_index
+        if 0 <= idx < len(data.studios) and data.studios[idx].locked:
+            return False
+        return True
 
     def execute(self, context):
         data = context.scene.stage_data
