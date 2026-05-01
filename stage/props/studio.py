@@ -18,6 +18,7 @@ from bpy.props import (
 from .stored_prop import StoredProp
 from .facet_world import FacetWorld
 from .facet_camera import FacetCamera
+from .facet_visibility import FacetVisibility
 
 
 class Studio(PropertyGroup):
@@ -105,6 +106,7 @@ class Studio(PropertyGroup):
     # Per-facet captured data (one PropertyGroup per facet needing structured storage)
     facet_world: PointerProperty(type=FacetWorld)
     facet_camera: PointerProperty(type=FacetCamera)
+    facet_visibility: PointerProperty(type=FacetVisibility)
 
     # Custom-stored RNA paths (right-click → Store in Studio, v1.0)
     custom_paths: CollectionProperty(type=StoredProp)

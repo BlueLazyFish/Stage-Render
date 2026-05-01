@@ -311,3 +311,128 @@ def test_camera_missing_camera_does_not_raise():
 
     # Apply should not raise
     apply_all(scene, studio)
+
+
+# --- visibility facet -------------------------------------------------------
+
+
+def _collection(name: str):
+    """Get or create a Collection. Idempotent."""
+    if name in bpy.data.collections:
+        return bpy.data.collections[name]
+    return bpy.data.collections.new(name)
+
+
+def _empty_object(name: str):
+    """Get or create an Empty Object — idempotent.
+
+    Empty Objects (data=None) are sufficient for visibility tests since
+    hide_viewport/hide_render live on Object, not on its data.
+    """
+    if name in bpy.data.objects:
+        return bpy.data.objects[name]
+    return bpy.data.objects.new(name, None)
+
+
+def _find_layer_collection(layer_coll, name):
+    if layer_coll.collection.name == name:
+        return layer_coll
+    for child in layer_coll.children:
+        found = _find_layer_collection(child, name)
+        if found is not None:
+            return found
+    return None
+
+
+def test_visibility_facet_in_registry():
+    facets = {f.facet_id for f in all_facets()}
+    assert "visibility" in facets, f"Missing visibility facet; have: {sorted(facets)}"
+
+
+def test_visibility_round_trip_collection_and_object():
+    scene = _fresh_scene()
+    studio = _new_studio(scene)
+
+    coll = _collection("stage_test_vis_coll")
+    if coll.name not in [c.name for c in scene.collection.children]:
+        scene.collection.children.link(coll)
+
+    obj = _empty_object("stage_test_vis_obj")
+    if obj.name not in scene.collection.objects:
+        scene.collection.objects.link(obj)
+
+    coll.hide_viewport = True
+    coll.hide_render = True
+    obj.hide_viewport = True
+    obj.hide_render = True
+
+    capture_all(scene, studio)
+
+    coll.hide_viewport = False
+    coll.hide_render = False
+    obj.hide_viewport = False
+    obj.hide_render = False
+
+    apply_all(scene, studio)
+
+    assert coll.hide_viewport is True, "coll.hide_viewport not restored"
+    assert coll.hide_render is True, "coll.hide_render not restored"
+    assert obj.hide_viewport is True, "obj.hide_viewport not restored"
+    assert obj.hide_render is True, "obj.hide_render not restored"
+
+
+def test_visibility_layer_collection_exclude_round_trip():
+    scene = _fresh_scene()
+    studio = _new_studio(scene)
+
+    coll = _collection("stage_test_vis_coll_excl")
+    if coll.name not in [c.name for c in scene.collection.children]:
+        scene.collection.children.link(coll)
+
+    vl = scene.view_layers[0]
+    lc = _find_layer_collection(vl.layer_collection, coll.name)
+    assert lc is not None, "test setup: LayerCollection not found"
+
+    lc.exclude = True
+    capture_all(scene, studio)
+
+    lc.exclude = False
+    apply_all(scene, studio)
+
+    lc = _find_layer_collection(vl.layer_collection, coll.name)
+    assert lc.exclude is True, "exclude flag not restored"
+
+
+def test_visibility_disabled_facet_skips_apply():
+    scene = _fresh_scene()
+    studio = _new_studio(scene)
+
+    obj = _empty_object("stage_test_vis_obj_disabled")
+    if obj.name not in scene.collection.objects:
+        scene.collection.objects.link(obj)
+
+    obj.hide_render = True
+    capture_all(scene, studio)
+
+    studio.facet_visibility_enabled = False
+
+    obj.hide_render = False
+    apply_all(scene, studio)
+
+    assert obj.hide_render is False, "disabled facet still applied"
+
+
+def test_visibility_missing_object_does_not_raise():
+    scene = _fresh_scene()
+    studio = _new_studio(scene)
+
+    obj = _empty_object("stage_test_vis_obj_temp")
+    if obj.name not in scene.collection.objects:
+        scene.collection.objects.link(obj)
+
+    capture_all(scene, studio)
+
+    bpy.data.objects.remove(obj, do_unlink=True)
+
+    # Apply should not raise
+    apply_all(scene, studio)

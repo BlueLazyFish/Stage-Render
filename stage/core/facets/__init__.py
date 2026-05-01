@@ -62,3 +62,4 @@ def apply_all(scene, studio) -> None:
 from . import output_path  # noqa: F401, E402
 from . import world  # noqa: F401, E402
 from . import camera  # noqa: F401, E402
+from . import visibility  # noqa: F401, E402

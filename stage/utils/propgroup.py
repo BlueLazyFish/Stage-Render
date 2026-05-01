@@ -8,9 +8,8 @@ def copy_propgroup(src, dst) -> None:
 
     - Skips read-only properties and the 'rna_type' descriptor.
     - Recurses into PointerProperty sub-PropertyGroups.
-    - Skips CollectionProperty — caller must handle deep-copy explicitly,
-      since CollectionProperty has no setattr-style copy and items must
-      be added one at a time.
+    - Recurses into CollectionProperty: clears `dst`, then for each item
+      in `src`, adds a new item to `dst` and copies recursively.
 
     `src` and `dst` should be the same PropertyGroup type.
     """
@@ -21,6 +20,12 @@ def copy_propgroup(src, dst) -> None:
         if getattr(prop, "is_readonly", False):
             continue
         if prop.type == 'COLLECTION':
+            src_coll = getattr(src, ident)
+            dst_coll = getattr(dst, ident)
+            dst_coll.clear()
+            for src_item in src_coll:
+                dst_item = dst_coll.add()
+                copy_propgroup(src_item, dst_item)
             continue
         if prop.type == 'POINTER':
             sub_src = getattr(src, ident, None)
