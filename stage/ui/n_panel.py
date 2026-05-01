@@ -60,6 +60,11 @@ class STAGE_PT_main(Panel):
             row.operator("stage.studio_update_from_scene", icon='FILE_REFRESH')
             row.operator("stage.studio_refresh_thumbnail", icon='IMAGE_DATA', text="")
 
+            # Render — single Studio or batch all enabled
+            row = layout.row(align=True)
+            row.operator("stage.studio_render_one", icon='RENDER_STILL')
+            row.operator("stage.studio_render_all", icon='RENDER_STILL', text="Render All")
+
             box = layout.box()
             box.prop(active, "name")
             box.prop(active, "output_override", text="Output Path")

@@ -9,6 +9,13 @@ from bpy.types import AddonPreferences
 from bpy.props import StringProperty, BoolProperty, EnumProperty
 
 
+# Module-level default so callers (render ops, tests) can fall back to it
+# when the addon hasn't been registered through Blender's extension manager
+# (e.g. raw `import stage; stage.register()` from a Python script doesn't
+# populate context.preferences.addons).
+DEFAULT_OUTPUT_PATTERN = "//{blendname}/{studio}/{frame}.{ext}"
+
+
 class StagePreferences(AddonPreferences):
     bl_idname = __package__
 
@@ -16,7 +23,7 @@ class StagePreferences(AddonPreferences):
     default_output_pattern: StringProperty(
         name="Default Output Pattern",
         description="Default path template for new Studios — supports {studio}, {frame}, {date_time}, etc.",
-        default="//{blendname}/{studio}/{frame}.{ext}",
+        default=DEFAULT_OUTPUT_PATTERN,
     )
 
     library_path: StringProperty(
@@ -96,6 +103,24 @@ class StagePreferences(AddonPreferences):
         col = layout.column(align=True)
         col.label(text="Diagnostics", icon='CONSOLE')
         col.prop(self, "log_level")
+
+
+def get_prefs(context):
+    """Return the addon's AddonPreferences instance, or None if the addon
+    isn't registered in Blender's extension manager (e.g. raw script import)."""
+    addons = context.preferences.addons
+    if StagePreferences.bl_idname in addons:
+        return addons[StagePreferences.bl_idname].preferences
+    return None
+
+
+def get_default_output_pattern(context) -> str:
+    """Return the user's configured pattern, or the module default if the
+    addon isn't fully installed (tests / dev script registration)."""
+    prefs = get_prefs(context)
+    if prefs is not None:
+        return prefs.default_output_pattern
+    return DEFAULT_OUTPUT_PATTERN
 
 
 def register() -> None:

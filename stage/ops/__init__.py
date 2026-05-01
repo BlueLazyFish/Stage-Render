@@ -3,9 +3,10 @@
 from . import studio_crud
 from . import apply
 from . import thumbnails
+from . import render
 
 
-_modules = (studio_crud, apply, thumbnails)
+_modules = (studio_crud, apply, thumbnails, render)
 
 
 def register() -> None:
