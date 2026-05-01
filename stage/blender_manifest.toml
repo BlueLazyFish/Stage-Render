@@ -1,0 +1,19 @@
+schema_version = "1.0.0"
+
+id = "stage"
+version = "0.1.0"
+name = "Stage"
+tagline = "Scene state manager and render queue"
+maintainer = "Louis Rist <you@example.com>"
+type = "add-on"
+
+blender_version_min = "5.1.0"
+
+license = ["SPDX:GPL-3.0-or-later"]
+
+tags = ["Render", "Pipeline", "Scene"]
+
+# Permissions to declare as features land:
+# [permissions]
+# files = "Read/write thumbnail cache, output paths, queue database"
+# network = "Slack webhook notifications (opt-in)"
