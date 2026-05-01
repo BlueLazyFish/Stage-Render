@@ -63,7 +63,7 @@ def main() -> int:
 
     out = build(args.out.resolve())
     print(f"Built: {out}")
-    print("Install via: Blender → Edit → Preferences → Get Extensions → Install from Disk")
+    print("Install via: Blender > Edit > Preferences > Get Extensions > Install from Disk")
     return 0
 
 
