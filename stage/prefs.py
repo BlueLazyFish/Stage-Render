@@ -22,7 +22,8 @@ class StagePreferences(AddonPreferences):
     # Output
     default_output_pattern: StringProperty(
         name="Default Output Pattern",
-        description="Default path template for new Studios — supports {studio}, {frame}, {date_time}, etc.",
+        description="Default path template applied to every Studio across every scene unless that Studio sets its own override. Supports {studio}, {frame}, {date_time}, etc.",
+        subtype='FILE_PATH',
         default=DEFAULT_OUTPUT_PATTERN,
     )
 

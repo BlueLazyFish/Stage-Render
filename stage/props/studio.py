@@ -100,7 +100,8 @@ class Studio(PropertyGroup):
     # Output override (empty = inherit from project/prefs)
     output_override: StringProperty(
         name="Output Override",
-        description="Per-Studio output path override — empty falls back to inherited",
+        description="Per-Studio output path override — empty falls back to the addon-prefs default. Supports {studio}, {frame}, {date_time}, etc.",
+        subtype='FILE_PATH',
         default="",
     )
 

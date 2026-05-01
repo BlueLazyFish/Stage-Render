@@ -6,6 +6,8 @@ Phase 0 ships the Studio List + minimal Toolbox. Subpanels arrive in Phase 1.
 import bpy
 from bpy.types import Panel
 
+from ..prefs import get_prefs
+
 
 _CATEGORY = "Stage"
 
@@ -20,6 +22,16 @@ class STAGE_PT_main(Panel):
     def draw(self, context):
         layout = self.layout
         data = context.scene.stage_data
+
+        # Default output path — shared across all scenes (addon-level setting,
+        # editable here for convenience instead of digging into prefs). Each
+        # Studio can override this in its details box below.
+        prefs = get_prefs(context)
+        if prefs is not None:
+            col = layout.column(align=True)
+            col.label(text="Default Output Path:")
+            col.prop(prefs, "default_output_pattern", text="")
+            layout.separator()
 
         row = layout.row()
         row.template_list(
