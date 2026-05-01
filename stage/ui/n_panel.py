@@ -42,8 +42,25 @@ class STAGE_PT_main(Panel):
 
         if data.studios and 0 <= data.active_index < len(data.studios):
             active = data.studios[data.active_index]
+
+            # Apply / Update — the central operations
+            row = layout.row(align=True)
+            row.operator("stage.studio_apply", icon='IMPORT')
+            row.operator("stage.studio_update_from_scene", icon='FILE_REFRESH')
+
             box = layout.box()
             box.prop(active, "name")
+            box.prop(active, "output_override", text="Output Path")
+
+            # Facet capture toggles — what this Studio remembers
+            sub = box.column(align=True)
+            sub.label(text="Capture:")
+            sub.prop(active, "facet_camera_enabled", text="Camera")
+            sub.prop(active, "facet_world_enabled", text="World")
+            sub.prop(active, "facet_visibility_enabled", text="Visibility")
+            sub.prop(active, "facet_render_enabled", text="Render Settings")
+            sub.prop(active, "facet_output_path_enabled", text="Output Path")
+
             box.prop(active, "notes")
             box.prop(active, "tags")
 

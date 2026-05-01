@@ -13,6 +13,8 @@ license = ["SPDX:GPL-3.0-or-later"]
 
 tags = ["Render", "Pipeline", "Scene"]
 
+website = "https://github.com/BlueLazyFish/Stage-Render"
+
 # Permissions to declare as features land:
 # [permissions]
 # files = "Read/write thumbnail cache, output paths, queue database"

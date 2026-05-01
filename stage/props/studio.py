@@ -40,6 +40,13 @@ class Studio(PropertyGroup):
         default=False,
     )
 
+    # Per-Studio facet toggles — choose which facets this Studio captures/applies
+    facet_camera_enabled: BoolProperty(name="Capture Camera", default=True)
+    facet_world_enabled: BoolProperty(name="Capture World", default=True)
+    facet_visibility_enabled: BoolProperty(name="Capture Visibility", default=True)
+    facet_render_enabled: BoolProperty(name="Capture Render Settings", default=True)
+    facet_output_path_enabled: BoolProperty(name="Capture Output Path", default=True)
+
     # Display
     color: FloatVectorProperty(
         name="Color",

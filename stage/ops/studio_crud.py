@@ -20,12 +20,13 @@ class STAGE_OT_studio_add(Operator):
     name: StringProperty(name="Name", default="Studio")
 
     def execute(self, context):
+        from ..core.facets import capture_all
         data = context.scene.stage_data
         new_studio = data.studios.add()
         new_studio.name = self.name or "Studio"
         new_studio.uuid = str(uuid.uuid4())
         data.active_index = len(data.studios) - 1
-        # TODO: capture facets from current scene (Phase 1)
+        capture_all(context.scene, new_studio)
         self.report({'INFO'}, f"Added Studio: {new_studio.name}")
         return {'FINISHED'}
 
@@ -89,7 +90,12 @@ class STAGE_OT_studio_duplicate(Operator):
         new.frame_end = src.frame_end
         new.frame_step = src.frame_step
         new.output_override = src.output_override
-        # TODO: copy custom_paths and facets (Phase 1)
+        new.facet_camera_enabled = src.facet_camera_enabled
+        new.facet_world_enabled = src.facet_world_enabled
+        new.facet_visibility_enabled = src.facet_visibility_enabled
+        new.facet_render_enabled = src.facet_render_enabled
+        new.facet_output_path_enabled = src.facet_output_path_enabled
+        # TODO: copy custom_paths and per-facet sub-data (Phase 1 — facet PropertyGroups land per facet)
         data.active_index = len(data.studios) - 1
         return {'FINISHED'}
 

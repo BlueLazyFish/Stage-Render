@@ -1,9 +1,10 @@
 """Operator registration."""
 
 from . import studio_crud
+from . import apply
 
 
-_modules = (studio_crud,)
+_modules = (studio_crud, apply)
 
 
 def register() -> None:
