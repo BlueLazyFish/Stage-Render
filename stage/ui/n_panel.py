@@ -49,10 +49,7 @@ class STAGE_PT_main(Panel):
             if data.dirty:
                 row = layout.row()
                 row.alert = True
-                row.label(
-                    text="● Uncommitted changes — Update or Apply",
-                    icon='ERROR',
-                )
+                row.label(text="● Uncommitted changes", icon='ERROR')
 
             # Apply / Update — the central operations
             row = layout.row(align=True)
@@ -67,7 +64,11 @@ class STAGE_PT_main(Panel):
 
             box = layout.box()
             box.prop(active, "name")
-            box.prop(active, "output_override", text="Output Path")
+
+            # Output Path — label on its own line so the field gets full width
+            col = box.column(align=True)
+            col.label(text="Output Path:")
+            col.prop(active, "output_override", text="")
 
             # Facet capture toggles — what this Studio remembers
             sub = box.column(align=True)

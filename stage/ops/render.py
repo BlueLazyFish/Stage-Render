@@ -82,6 +82,13 @@ def _render_studio(scene, studio, default_pattern: str, *, frozen_now=None):
             window.scene = scene
 
         try:
+            # Open the Render Result window so progress is visible — same effect
+            # as pressing F12. Best-effort: silently ignore if the operator
+            # rejects in the current context.
+            try:
+                bpy.ops.render.view_show('INVOKE_DEFAULT')
+            except (RuntimeError, TypeError):
+                pass
             bpy.ops.render.render(write_still=True)
         finally:
             if (
