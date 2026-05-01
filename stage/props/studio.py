@@ -89,10 +89,14 @@ class Studio(PropertyGroup):
         default="",
     )
 
-    # Inheritance — child stores deltas only; parent supplies the rest
-    parent_uuid: StringProperty(
-        name="Parent UUID",
-        description="Optional parent Studio for inheritance",
+    # Inheritance — child stores deltas only; parent supplies the rest.
+    # Stored by name (not UUID) so the parent picker can use prop_search
+    # directly. Tradeoff: rename a parent and child links break; we accept
+    # this for v1.0 simplicity. UUID-based linking can come in v1.x if
+    # rename-resilience becomes a real problem.
+    parent_name: StringProperty(
+        name="Parent",
+        description="Optional parent Studio. The parent's facets apply first; this Studio's enabled facets override",
         default="",
     )
 

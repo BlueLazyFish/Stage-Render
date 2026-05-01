@@ -11,7 +11,8 @@ subsequent scene mutation.
 import bpy
 from bpy.types import Operator
 
-from ..core.facets import apply_all, capture_all
+from ..core.facets import capture_all
+from ..core.inheritance import apply_studio
 from ..handlers import set_apply_in_progress
 from ..utils.logger import get_logger
 
@@ -35,7 +36,9 @@ class STAGE_OT_studio_apply(Operator):
         studio = data.studios[data.active_index]
         set_apply_in_progress(True)
         try:
-            apply_all(context.scene, studio)
+            # apply_studio walks the parent_name chain (root → parent) and
+            # then applies the leaf, so inheritance is transparent.
+            apply_studio(context.scene, studio)
             data.last_applied_studio_uuid = studio.uuid
             data.dirty = False
             # Absorb the post-operator depsgraph fire so it doesn't re-flag

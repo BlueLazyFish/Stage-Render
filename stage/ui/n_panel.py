@@ -90,6 +90,15 @@ class STAGE_PT_main(Panel):
 
             details.prop(active, "name")
 
+            # Parent Studio — inheritance. Disable a facet on this Studio to
+            # keep the parent's value for that facet.
+            details.prop_search(
+                active, "parent_name",
+                data, "studios",
+                text="Parent",
+                icon='OUTLINER_OB_GROUP_INSTANCE',
+            )
+
             # Output Path — label on its own line so the field gets full width
             col = details.column(align=True)
             col.label(text="Output Path:")
