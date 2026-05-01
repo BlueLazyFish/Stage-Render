@@ -60,3 +60,5 @@ def apply_all(scene, studio) -> None:
 # Import each facet module so they self-register on first import.
 # Append new facets here as Phase 1 progresses.
 from . import output_path  # noqa: F401, E402
+from . import world  # noqa: F401, E402
+from . import camera  # noqa: F401, E402

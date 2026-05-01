@@ -11,10 +11,13 @@ from bpy.props import (
     BoolProperty,
     IntProperty,
     FloatVectorProperty,
+    PointerProperty,
     CollectionProperty,
 )
 
 from .stored_prop import StoredProp
+from .facet_world import FacetWorld
+from .facet_camera import FacetCamera
 
 
 class Studio(PropertyGroup):
@@ -98,6 +101,10 @@ class Studio(PropertyGroup):
         description="Per-Studio output path override — empty falls back to inherited",
         default="",
     )
+
+    # Per-facet captured data (one PropertyGroup per facet needing structured storage)
+    facet_world: PointerProperty(type=FacetWorld)
+    facet_camera: PointerProperty(type=FacetCamera)
 
     # Custom-stored RNA paths (right-click → Store in Studio, v1.0)
     custom_paths: CollectionProperty(type=StoredProp)

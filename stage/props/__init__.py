@@ -3,11 +3,13 @@
 import bpy
 
 from . import stored_prop
+from . import facet_world
+from . import facet_camera
 from . import studio
 from . import studio_collection
 
 
-_modules = (stored_prop, studio, studio_collection)
+_modules = (stored_prop, facet_world, facet_camera, studio, studio_collection)
 
 
 def register() -> None:

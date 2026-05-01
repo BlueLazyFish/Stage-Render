@@ -71,31 +71,23 @@ class STAGE_OT_studio_duplicate(Operator):
         return len(data.studios) > 0
 
     def execute(self, context):
+        from ..utils.propgroup import copy_propgroup
         data = context.scene.stage_data
         src_idx = data.active_index
         if not (0 <= src_idx < len(data.studios)):
             return {'CANCELLED'}
         src = data.studios[src_idx]
         new = data.studios.add()
-        # Scalar copy. Deep facet copy lands in Phase 1 alongside facet capture.
+
+        # Copy all writable scalars + nested PropertyGroups (recurses into
+        # facet_*). custom_paths (CollectionProperty) is skipped — needs
+        # explicit deep-copy when right-click → Store ships in v1.0.
+        copy_propgroup(src, new)
+
+        # Override fields that must be unique to the duplicate.
         new.name = f"{src.name} Copy"
         new.uuid = str(uuid.uuid4())
-        new.enabled = src.enabled
-        new.color = src.color
-        new.color_label = src.color_label
-        new.notes = src.notes
-        new.tags = src.tags
-        new.parent_uuid = src.parent_uuid
-        new.frame_start = src.frame_start
-        new.frame_end = src.frame_end
-        new.frame_step = src.frame_step
-        new.output_override = src.output_override
-        new.facet_camera_enabled = src.facet_camera_enabled
-        new.facet_world_enabled = src.facet_world_enabled
-        new.facet_visibility_enabled = src.facet_visibility_enabled
-        new.facet_render_enabled = src.facet_render_enabled
-        new.facet_output_path_enabled = src.facet_output_path_enabled
-        # TODO: copy custom_paths and per-facet sub-data (Phase 1 — facet PropertyGroups land per facet)
+
         data.active_index = len(data.studios) - 1
         return {'FINISHED'}
 
