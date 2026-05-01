@@ -44,6 +44,12 @@ jobs:
               raise SystemExit(f"Manifest missing required keys: {sorted(missing)}")
           print(f"OK: {data['name']} v{data['version']} for Blender {data['blender_version_min']}+")
 
+      - name: Install pytest
+        run: pip install pytest
+
+      - name: Run unit tests
+        run: pytest tests/unit
+
       - name: Build extension package
         run: python scripts/package.py
 
