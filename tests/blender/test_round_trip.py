@@ -436,3 +436,88 @@ def test_visibility_missing_object_does_not_raise():
 
     # Apply should not raise
     apply_all(scene, studio)
+
+
+# --- render settings facet --------------------------------------------------
+
+
+def test_render_settings_facet_in_registry():
+    facets = {f.facet_id for f in all_facets()}
+    assert "render_settings" in facets, f"Missing render_settings facet; have: {sorted(facets)}"
+
+
+def test_render_settings_round_trip_common():
+    """Resolution, percentage, fps round-trip independent of engine."""
+    scene = _fresh_scene()
+    studio = _new_studio(scene)
+
+    scene.render.resolution_x = 2560
+    scene.render.resolution_y = 1440
+    scene.render.resolution_percentage = 75
+    scene.render.fps = 60
+
+    capture_all(scene, studio)
+
+    scene.render.resolution_x = 800
+    scene.render.resolution_y = 600
+    scene.render.resolution_percentage = 100
+    scene.render.fps = 24
+
+    apply_all(scene, studio)
+
+    assert scene.render.resolution_x == 2560
+    assert scene.render.resolution_y == 1440
+    assert scene.render.resolution_percentage == 75
+    assert scene.render.fps == 60
+
+
+def test_render_settings_round_trip_cycles():
+    """Engine-specific Cycles settings round-trip via the CyclesAdapter."""
+    scene = _fresh_scene()
+    studio = _new_studio(scene)
+
+    scene.render.engine = 'CYCLES'
+    scene.cycles.samples = 256
+    scene.cycles.use_denoising = True
+    scene.cycles.max_bounces = 8
+
+    capture_all(scene, studio)
+
+    scene.cycles.samples = 64
+    scene.cycles.use_denoising = False
+    scene.cycles.max_bounces = 12
+
+    apply_all(scene, studio)
+
+    assert scene.cycles.samples == 256, f"samples: {scene.cycles.samples}"
+    assert scene.cycles.use_denoising is True
+    assert scene.cycles.max_bounces == 8
+
+
+def test_render_settings_engine_round_trip():
+    """Capture in Cycles, switch to EEVEE, apply restores Cycles."""
+    scene = _fresh_scene()
+    studio = _new_studio(scene)
+
+    scene.render.engine = 'CYCLES'
+    capture_all(scene, studio)
+
+    scene.render.engine = 'BLENDER_EEVEE'
+    apply_all(scene, studio)
+
+    assert scene.render.engine == 'CYCLES', f"engine: {scene.render.engine}"
+
+
+def test_render_settings_disabled_facet_skips_apply():
+    scene = _fresh_scene()
+    studio = _new_studio(scene)
+
+    scene.render.resolution_x = 1920
+    capture_all(scene, studio)
+
+    studio.facet_render_enabled = False
+
+    scene.render.resolution_x = 800
+    apply_all(scene, studio)
+
+    assert scene.render.resolution_x == 800, "disabled facet still applied"

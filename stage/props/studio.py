@@ -19,6 +19,7 @@ from .stored_prop import StoredProp
 from .facet_world import FacetWorld
 from .facet_camera import FacetCamera
 from .facet_visibility import FacetVisibility
+from .facet_render import FacetRender
 
 
 class Studio(PropertyGroup):
@@ -107,6 +108,7 @@ class Studio(PropertyGroup):
     facet_world: PointerProperty(type=FacetWorld)
     facet_camera: PointerProperty(type=FacetCamera)
     facet_visibility: PointerProperty(type=FacetVisibility)
+    facet_render: PointerProperty(type=FacetRender)
 
     # Custom-stored RNA paths (right-click → Store in Studio, v1.0)
     custom_paths: CollectionProperty(type=StoredProp)

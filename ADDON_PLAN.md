@@ -526,7 +526,7 @@ Cache lives on disk via `bpy.app.cachedir/thumbnails/<studio_uuid>.png`, not in 
 - **Geometry Nodes modifier API (5.1)** — use `modifier.properties.inputs.<id>.value` / `.attribute_name`, *not* the old `modifier["id"]` dictionary access. The old form is removed.
 - **Annotations API (5.0+)** — `bpy.types.GreasePencil` was renamed to `bpy.types.Annotation`. Unlikely to affect us, but flag if we ever store grease pencil/annotation state.
 - **Working color space + ACES views (5.0+)** — capture `Scene.display_settings.display_device`, `Scene.view_settings.view_transform`, and the working color space as part of the render facet.
-- **EEVEE engine identifier** is now `'BLENDER_EEVEE_NEXT'` — the legacy `'BLENDER_EEVEE'` is gone. No migration needed since we're 5.1+ only.
+- **EEVEE engine identifier** is `'BLENDER_EEVEE'` in 5.1+ — EEVEE Next was renamed back to plain `'BLENDER_EEVEE'` in Blender 4.3 after the legacy engine was removed. (Earlier docs listed `'BLENDER_EEVEE_NEXT'` from the 4.2 timeline.) No migration needed since we target 5.1+.
 - **Movie format outputs** (mp4 / mkv / avi) — Blender already does this via FFmpeg. Don't add a layer; just don't fight it in output-naming code.
 - **Python 3.13** — use modern type hints freely (`X | None`, `list[T]`, `match` statements). Use `tomllib` from stdlib for parsing the manifest if we need to introspect it.
 - **Cross-platform**: paths, shutdown commands, notifications — abstract behind a small `platform_utils` module. Use `bpy.app.cachedir` for thumbnail cache and queue DB (5.1).
