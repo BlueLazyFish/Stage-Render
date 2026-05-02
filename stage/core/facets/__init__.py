@@ -64,3 +64,4 @@ from . import world  # noqa: F401, E402
 from . import camera  # noqa: F401, E402
 from . import visibility  # noqa: F401, E402
 from . import render_settings  # noqa: F401, E402
+from . import custom_props  # noqa: F401, E402

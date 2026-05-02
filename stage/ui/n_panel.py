@@ -116,6 +116,19 @@ class STAGE_PT_main(Panel):
             details.prop(active, "notes")
             details.prop(active, "tags")
 
+            # Stored custom properties — added via right-click → Store in Stage.
+            stored_count = len(active.custom_paths)
+            if stored_count:
+                box = details.box()
+                box.label(
+                    text=f"Stored Properties ({stored_count})",
+                    icon='RNA',
+                )
+                for entry in active.custom_paths:
+                    row = box.row(align=True)
+                    row.label(text=entry.data_path)
+                    row.label(text=entry.value_repr)
+
 
 _classes = (STAGE_PT_main,)
 
