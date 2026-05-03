@@ -2,9 +2,10 @@
 
 from . import studio_uilist
 from . import n_panel
+from . import lister
 
 
-_modules = (studio_uilist, n_panel)
+_modules = (studio_uilist, n_panel, lister)
 
 
 def register() -> None:
