@@ -66,11 +66,12 @@ def _looks_like_directory(path: str) -> bool:
     return "." not in leaf
 
 
-# Filename used when the user picks a folder via the browse button. Both
-# {studio} and {frame} are included so distinct Studios queued together
-# produce distinct files (the bug that motivated this whole helper) and
-# multi-frame animations don't overwrite themselves.
-_DIR_FALLBACK_FILENAME = "{studio}_{frame:04d}.{ext}"
+# Filename used when the user picks a folder via the browse button.
+# Includes {studio}, an 8-char {studio_uuid} fragment, and {frame} so:
+#   - distinct Studios queued together produce distinct files
+#   - duplicate-name Studios still produce distinct files (uuid breaks the tie)
+#   - multi-frame animations don't overwrite themselves
+_DIR_FALLBACK_FILENAME = "{studio}_{studio_uuid}_{frame:04d}.{ext}"
 
 
 def _join_dir_and_filename(directory: str, filename: str) -> str:
@@ -101,8 +102,8 @@ def resolve_output_path(scene, studio, default_pattern: str, *, frozen_now=None)
     elif _looks_like_directory(override):
         # default_pattern's filename portion isn't safe to reuse here —
         # if it's just "{frame}.{ext}" then every Studio collides on the
-        # same file. Use a guaranteed-distinct {studio}_{frame:04d}.{ext}
-        # template instead.
+        # same file. Use a guaranteed-distinct {studio}_{studio_uuid}_
+        # {frame:04d}.{ext} template instead.
         template = _join_dir_and_filename(override, _DIR_FALLBACK_FILENAME)
     else:
         template = override
@@ -117,6 +118,10 @@ def resolve_output_path(scene, studio, default_pattern: str, *, frozen_now=None)
     ctx["ext"] = _FORMAT_EXT.get(
         scene.render.image_settings.file_format, ctx.get("ext", "png")
     )
+    # Short uuid fragment so duplicate-named Studios still get distinct
+    # files in the directory-fallback case. Empty string when uuid is
+    # missing (older studios pre-uuid migration).
+    ctx["studio_uuid"] = (studio.uuid or "")[:8]
     return expand_path(template, ctx)
 
 

@@ -19,10 +19,10 @@ def _fresh_scene(name: str = "stage_render_path_test"):
     return bpy.data.scenes.new(name)
 
 
-def _make_studio(scene, name: str, *, output_override: str = ""):
+def _make_studio(scene, name: str, *, output_override: str = "", uuid: str = ""):
     s = scene.stage_data.studios.add()
     s.name = name
-    s.uuid = f"render-path-{name}"
+    s.uuid = uuid or f"render-path-{name}"
     s.output_override = output_override
     return s
 
@@ -83,40 +83,62 @@ def test_resolve_output_path_preserves_blender_relative_prefix():
 
 
 def test_directory_override_uses_studio_frame_filename():
-    """User picks a folder — result is <folder>/<studio>_<frame>.<ext>
+    """User picks a folder — result is <folder>/<studio>_<uuid>_<frame>.<ext>
     so distinct Studios produce distinct files (no shared filename)."""
     scene = _fresh_scene()
-    studio = _make_studio(scene, "Hero", output_override="/Users/me/Renders/")
+    studio = _make_studio(
+        scene, "Hero",
+        output_override="/Users/me/Renders/",
+        uuid="abcd1234-rest-of-uuid",
+    )
 
     path = resolve_output_path(
         scene, studio,
         default_pattern="{blendname}/{studio}/{frame}.{ext}",
     )
-    assert path == "/Users/me/Renders/Hero_0001.png", f"unexpected: {path}"
+    # First 8 chars of uuid are sanitized to filename-safe form.
+    assert path == "/Users/me/Renders/Hero_abcd1234_0001.png", f"unexpected: {path}"
 
 
 def test_directory_override_without_trailing_slash_still_treated_as_dir():
     """A leaf with no extension reads as a folder, even without trailing slash."""
     scene = _fresh_scene()
-    studio = _make_studio(scene, "Hero", output_override="/Users/me/Renders")
+    studio = _make_studio(
+        scene, "Hero",
+        output_override="/Users/me/Renders",
+        uuid="abcd1234-rest",
+    )
 
     path = resolve_output_path(
         scene, studio, default_pattern="ignored",
     )
-    assert path == "/Users/me/Renders/Hero_0001.png", f"unexpected: {path}"
+    assert path == "/Users/me/Renders/Hero_abcd1234_0001.png", f"unexpected: {path}"
 
 
 def test_directory_override_distinct_per_studio():
     """Two Studios with the same folder override must resolve to distinct files."""
     scene = _fresh_scene()
-    a = _make_studio(scene, "Hero", output_override="/r/")
-    b = _make_studio(scene, "Wide", output_override="/r/")
+    a = _make_studio(scene, "Hero", output_override="/r/", uuid="aaaaaaaa-x")
+    b = _make_studio(scene, "Wide", output_override="/r/", uuid="bbbbbbbb-x")
 
     pa = resolve_output_path(scene, a, default_pattern="ignored")
     pb = resolve_output_path(scene, b, default_pattern="ignored")
     assert pa != pb, "distinct studios must produce distinct output paths"
     assert "Hero" in pa
     assert "Wide" in pb
+
+
+def test_directory_override_handles_duplicate_named_studios():
+    """Two Studios with the SAME name still get distinct files via uuid.
+    Reproduces the duplicate-name collision the user hit in stress test."""
+    scene = _fresh_scene()
+    a = _make_studio(scene, "Studio", output_override="/r/", uuid="aaaaaaaa-x")
+    b = _make_studio(scene, "Studio", output_override="/r/", uuid="bbbbbbbb-x")
+
+    pa = resolve_output_path(scene, a, default_pattern="ignored")
+    pb = resolve_output_path(scene, b, default_pattern="ignored")
+    assert pa != pb, "duplicate-named studios must still get distinct files via uuid"
+    assert "aaaaaaaa" in pa and "bbbbbbbb" in pb
 
 
 def test_override_with_extension_used_as_is():
