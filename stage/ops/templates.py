@@ -30,6 +30,7 @@ from ..core.thumbnails import render_thumbnail
 from ..handlers import set_apply_in_progress
 from ..prefs import get_prefs
 from ..utils.logger import get_logger
+from ..utils.naming import unique_name
 
 
 _log = get_logger()
@@ -77,7 +78,10 @@ class STAGE_OT_studio_add_from_template(Operator):
 
         data = context.scene.stage_data
         new_studio = data.studios.add()
-        new_studio.name = template["display_name"]
+        # Disambiguate so adding the same template twice doesn't produce
+        # two Studios with identical names.
+        existing = [s.name for s in data.studios if s != new_studio]
+        new_studio.name = unique_name(template["display_name"], existing)
         new_studio.uuid = str(uuid.uuid4())
         data.active_index = len(data.studios) - 1
 
@@ -98,8 +102,8 @@ class STAGE_OT_studio_add_from_template(Operator):
         finally:
             set_apply_in_progress(False)
 
-        self.report({'INFO'}, f"Added Studio from template: {template['display_name']}")
-        _log.info("Added Studio from template: %s", template["display_name"])
+        self.report({'INFO'}, f"Added Studio: {new_studio.name} (from template: {template['display_name']})")
+        _log.info("Added Studio %s from template %s", new_studio.name, template["display_name"])
         return {'FINISHED'}
 
 

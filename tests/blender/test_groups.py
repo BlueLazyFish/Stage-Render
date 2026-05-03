@@ -61,7 +61,8 @@ def test_add_group_disambiguates_duplicate_names():
         bpy.ops.stage.add_group()
 
     names = [g.name for g in scene.stage_data.groups]
-    assert names == ["Group", "Group.002", "Group.003"], (
+    # Blender's standard convention: Foo, Foo.001, Foo.002 (no skipped index).
+    assert names == ["Group", "Group.001", "Group.002"], (
         f"unexpected disambiguation: {names}"
     )
 

@@ -4,6 +4,8 @@ import bpy
 from bpy.types import Operator
 from bpy.props import IntProperty, StringProperty
 
+from ..utils.naming import unique_name
+
 
 def _data(context):
     return context.scene.stage_data
@@ -19,17 +21,11 @@ class STAGE_OT_add_group(Operator):
 
     def execute(self, context):
         data = _data(context)
-        # Auto-disambiguate the default name so back-to-back clicks don't
-        # produce duplicates that prop_search can't tell apart
-        base = self.name or "Group"
-        existing_names = {g.name for g in data.groups}
-        candidate = base
-        i = 1
-        while candidate in existing_names:
-            i += 1
-            candidate = f"{base}.{i:03d}"
         group = data.groups.add()
-        group.name = candidate
+        # Auto-disambiguate so back-to-back clicks produce Group, Group.001,
+        # Group.002… (Blender's standard convention).
+        existing = [g.name for g in data.groups if g != group]
+        group.name = unique_name(self.name or "Group", existing)
         self.report({'INFO'}, f"Added group: {group.name}")
         return {'FINISHED'}
 

@@ -10,6 +10,8 @@ import bpy
 from bpy.types import Operator
 from bpy.props import StringProperty
 
+from ..utils.naming import unique_name
+
 
 class STAGE_OT_studio_add(Operator):
     bl_idname = "stage.studio_add"
@@ -25,7 +27,11 @@ class STAGE_OT_studio_add(Operator):
         from ..handlers import set_apply_in_progress
         data = context.scene.stage_data
         new_studio = data.studios.add()
-        new_studio.name = self.name or "Studio"
+        # Auto-disambiguate so back-to-back "Add Studio" clicks produce
+        # Studio, Studio.001, Studio.002… rather than three identically-
+        # named entries that the queue + path resolver can't tell apart.
+        existing = [s.name for s in data.studios if s != new_studio]
+        new_studio.name = unique_name(self.name or "Studio", existing)
         new_studio.uuid = str(uuid.uuid4())
         data.active_index = len(data.studios) - 1
         set_apply_in_progress(True)
@@ -100,8 +106,11 @@ class STAGE_OT_studio_duplicate(Operator):
         # explicit deep-copy when right-click → Store ships in v1.0.
         copy_propgroup(src, new)
 
-        # Override fields that must be unique to the duplicate.
-        new.name = f"{src.name} Copy"
+        # Override fields that must be unique to the duplicate. Use the
+        # same .001/.002 convention so duplicating twice doesn't produce
+        # two "Studio Copy"s with the same name.
+        existing = [s.name for s in data.studios if s != new]
+        new.name = unique_name(f"{src.name} Copy", existing)
         new.uuid = str(uuid.uuid4())
 
         data.active_index = len(data.studios) - 1
