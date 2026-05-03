@@ -49,6 +49,9 @@ class STAGE_PT_lister(Panel):
     bl_region_type = 'UI'
     bl_category = "Stage"
     bl_options = {'DEFAULT_CLOSED'}
+    # Bottom of the stack — it's a global-search panel, not in the daily
+    # workflow flow (active Studio → queue → bulk → groups).
+    bl_order = 5
 
     def draw(self, context):
         layout = self.layout

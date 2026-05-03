@@ -88,7 +88,11 @@ def test_queue_panel_registered():
     from stage.ui.queue_panel import STAGE_PT_queue
     assert STAGE_PT_queue.bl_idname == "STAGE_PT_queue"
     assert STAGE_PT_queue.bl_category == "Stage"
-    assert 'DEFAULT_CLOSED' in STAGE_PT_queue.bl_options
+    # Queue panel is now opened by default — it's a primary workflow
+    # panel, not a tucked-away utility, so users see it without expanding.
+    assert 'DEFAULT_CLOSED' not in getattr(STAGE_PT_queue, "bl_options", set())
+    # Promoted up the stack — should sit just under Active Studio.
+    assert STAGE_PT_queue.bl_order == 2
 
 
 def test_queue_operators_registered():

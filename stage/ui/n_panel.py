@@ -1,6 +1,20 @@
 """N-panel layout — see ADDON_PLAN.md §5 for the full subpanel structure.
 
-Phase 0 ships the Studio List + minimal Toolbox. Subpanels arrive in Phase 1.
+Three collapsible subpanels stack under STAGE_PT_main:
+
+  STAGE_PT_main             Studio list, add/remove/duplicate/move,
+                            Default Output Path, Apply/Update/Render row.
+  STAGE_PT_active_studio    Per-Studio details (name, parent, group,
+                            output, capture toggles, notes, tags,
+                            stored properties, post-render actions).
+                            Hidden when the list is empty.
+  STAGE_PT_bulk_edit        Multi-selection + bulk operators.
+  STAGE_PT_groups           Group/variant-axis management.
+
+Other panels (queue_panel, lister) live in their own modules.
+
+bl_order pins the visible stack so re-ordering subpanels happens here
+rather than relying on registration order.
 """
 
 import bpy
@@ -12,27 +26,54 @@ from ..prefs import get_prefs
 _CATEGORY = "Stage"
 
 
+# --- helpers ---------------------------------------------------------------
+
+
+def _active_studio(context):
+    data = context.scene.stage_data
+    if not data.studios:
+        return None
+    if not (0 <= data.active_index < len(data.studios)):
+        return None
+    return data.studios[data.active_index]
+
+
+def _shorten_for_display(path: str, max_len: int = 60) -> tuple[str, str]:
+    """Split a resolved path into (directory, filename) for two-line display.
+
+    Filename is full; directory is truncated from the left with an ellipsis
+    if longer than max_len so the most meaningful part (the leaf folder)
+    stays visible.
+    """
+    if not path:
+        return ("", "")
+    if "/" in path:
+        directory, filename = path.rsplit("/", 1)
+    elif "\\" in path:
+        directory, filename = path.rsplit("\\", 1)
+    else:
+        directory, filename = "", path
+    if directory and len(directory) > max_len:
+        directory = "…" + directory[-(max_len - 1):]
+    return (directory, filename)
+
+
+# --- main panel ------------------------------------------------------------
+
+
 class STAGE_PT_main(Panel):
     bl_idname = "STAGE_PT_main"
     bl_label = "Stage"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = _CATEGORY
+    bl_order = 0
 
     def draw(self, context):
         layout = self.layout
         data = context.scene.stage_data
 
-        # Default output path — shared across all scenes (addon-level setting,
-        # editable here for convenience instead of digging into prefs). Each
-        # Studio can override this in its details box below.
-        prefs = get_prefs(context)
-        if prefs is not None:
-            col = layout.column(align=True)
-            col.label(text="Default Output Path:")
-            col.prop(prefs, "default_output_pattern", text="")
-            layout.separator()
-
+        # Studio list with sidebar buttons
         row = layout.row()
         row.template_list(
             "STAGE_UL_studios", "",
@@ -56,169 +97,173 @@ class STAGE_PT_main(Panel):
         op_down = col.operator("stage.studio_move", icon='TRIA_DOWN', text="")
         op_down.direction = 'DOWN'
 
-        if data.studios and 0 <= data.active_index < len(data.studios):
-            active = data.studios[data.active_index]
-
-            # Dirty-state badge — visible only when the scene was mutated after
-            # the last apply or update. Apply re-applies (discards changes);
-            # Update captures the current scene into the Studio.
+        # Apply / Update / Render — only meaningful when a Studio is active
+        active = _active_studio(context)
+        if active is not None:
             if data.dirty:
                 row = layout.row()
                 row.alert = True
                 row.label(text="● Uncommitted changes", icon='ERROR')
 
-            # Apply / Update — the central operations. Update already
-            # re-renders the thumbnail, so no separate refresh button.
+            # Apply | Update on one row, Render | Render All on another.
+            # Update already re-renders the thumbnail.
             row = layout.row(align=True)
             row.operator("stage.studio_apply", icon='IMPORT')
             row.operator("stage.studio_update_from_scene", icon='FILE_REFRESH')
 
-            # Render — single Studio or batch all enabled
             row = layout.row(align=True)
             row.operator("stage.studio_render_one", icon='RENDER_STILL')
             row.operator("stage.studio_render_all", icon='RENDER_STILL', text="Render All")
 
-            box = layout.box()
-
-            # Lock toggle — always editable so the user can unlock from the
-            # same UI that's otherwise greyed out.
-            # Toggle label between the action ("Lock") and the state
-            # ("Locked") so the button reads correctly in both positions.
-            row = box.row()
-            row.prop(
-                active, "locked",
-                text="Locked" if active.locked else "Lock",
-                icon='LOCKED' if active.locked else 'UNLOCKED',
-            )
-
-            # Everything below: read-only when the Studio is locked.
-            details = box.column()
-            details.enabled = not active.locked
-
-            details.prop(active, "name")
-
-            # Parent Studio — inheritance. Disable a facet on this Studio to
-            # keep the parent's value for that facet.
-            details.prop_search(
-                active, "parent_name",
-                data, "studios",
-                text="Parent",
-                icon='OUTLINER_OB_GROUP_INSTANCE',
-            )
-
-            # Group membership — variant axis assignment. Empty = ungrouped.
-            details.prop_search(
-                active, "group_name",
-                data, "groups",
-                text="Group",
-                icon='GROUP',
-            )
-
-            # Output Path — label on its own line so the field gets full width.
-            # Below the field we show the resolved path (after template
-            # expansion + directory-fallback rules) so the user can see
-            # exactly where a render would land before they click Render
-            # or Queue. Empty override = falls back to the addon-prefs
-            # default pattern shown above.
-            col = details.column(align=True)
-            col.label(text="Output Path:")
-            col.prop(active, "output_override", text="")
-            try:
-                from ..core.render import resolve_output_path
-                from ..prefs import get_default_output_pattern
-                resolved = resolve_output_path(
-                    context.scene, active,
-                    get_default_output_pattern(context),
-                )
-                hint = col.row()
-                hint.label(text=f"→ {resolved}", icon='FILE_TICK')
-            except Exception:
-                pass
-
-            # Facet capture toggles — what this Studio remembers
-            fcol = details.column(align=True)
-            fcol.label(text="Capture:")
-            fcol.prop(active, "facet_camera_enabled", text="Camera")
-            fcol.prop(active, "facet_world_enabled", text="World")
-            fcol.prop(active, "facet_visibility_enabled", text="Visibility")
-            fcol.prop(active, "facet_render_enabled", text="Render Settings")
-            fcol.prop(active, "facet_output_path_enabled", text="Output Path")
-
-            details.prop(active, "notes")
-            details.prop(active, "tags")
-
-            # Stored custom properties — added via right-click → Store in Stage.
-            stored_count = len(active.custom_paths)
-            if stored_count:
-                box = details.box()
-                box.label(
-                    text=f"Stored Properties ({stored_count})",
-                    icon='RNA',
-                )
-                for entry in active.custom_paths:
-                    row = box.row(align=True)
-                    row.label(text=entry.data_path)
-                    row.label(text=entry.value_repr)
-
-            # Post-render actions — execute in declared order after each render
-            box = details.box()
-            header = box.row(align=True)
-            header.label(
-                text=f"Post-Render Actions ({len(active.post_render_actions)})",
-                icon='SCRIPTPLUGINS',
-            )
-            header.operator("stage.add_post_render_action", icon='ADD', text="")
-            for i, action in enumerate(active.post_render_actions):
-                row = box.row(align=True)
-                row.prop(action, "action_type", text="")
-                row.prop(action, "target", text="")
-                op_up = row.operator("stage.move_post_render_action", icon='TRIA_UP', text="")
-                op_up.index = i
-                op_up.direction = 'UP'
-                op_down = row.operator("stage.move_post_render_action", icon='TRIA_DOWN', text="")
-                op_down.index = i
-                op_down.direction = 'DOWN'
-                op_rm = row.operator("stage.remove_post_render_action", icon='X', text="")
-                op_rm.index = i
-                if action.action_type == 'SLACK_WEBHOOK':
-                    sub = box.row(align=True)
-                    sub.label(text="")
-                    sub.prop(action, "message", text="Message")
+        # Default Output Path — useful but rarely changed; tucked at the
+        # bottom so it doesn't dominate the panel header. Editable here
+        # for convenience instead of digging into addon prefs.
+        prefs = get_prefs(context)
+        if prefs is not None:
+            layout.separator()
+            col = layout.column(align=True)
+            col.label(text="Default Output Path:", icon='FILE_FOLDER')
+            col.prop(prefs, "default_output_pattern", text="")
 
 
-class STAGE_PT_groups(bpy.types.Panel):
-    """Studio Groups management — collapsible subpanel under the Stage tab."""
-    bl_idname = "STAGE_PT_groups"
-    bl_label = "Groups"
+# --- active studio details (own subpanel) ---------------------------------
+
+
+class STAGE_PT_active_studio(Panel):
+    bl_idname = "STAGE_PT_active_studio"
+    bl_label = "Active Studio"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = _CATEGORY
-    bl_options = {'DEFAULT_CLOSED'}
+    bl_order = 1
+
+    @classmethod
+    def poll(cls, context):
+        # Hide entirely when there's no active Studio — no point rendering
+        # a header that just says "nothing selected".
+        return _active_studio(context) is not None
+
+    def draw_header(self, context):
+        active = _active_studio(context)
+        if active is None:
+            return
+        # Lock toggle as a small icon in the header — out of the main
+        # column so it doesn't dominate the details body. Always editable
+        # so you can unlock from the same UI that's otherwise greyed out.
+        row = self.layout.row(align=True)
+        row.prop(
+            active, "locked",
+            text="",
+            icon='LOCKED' if active.locked else 'UNLOCKED',
+            emboss=False,
+        )
+        row.label(text=active.name)
 
     def draw(self, context):
         layout = self.layout
         data = context.scene.stage_data
-
-        row = layout.row(align=True)
-        row.label(text=f"{len(data.groups)} group(s)")
-        row.operator("stage.add_group", icon='ADD', text="")
-
-        if not data.groups:
-            layout.label(
-                text="No groups yet. Click + to create a variant axis.",
-                icon='INFO',
-            )
+        active = _active_studio(context)
+        if active is None:
             return
 
-        for i, group in enumerate(data.groups):
-            row = layout.row(align=True)
-            row.prop(group, "color", text="")
-            row.prop(group, "name", text="")
-            op = row.operator("stage.remove_group", icon='X', text="")
-            op.index = i
+        # Everything below: read-only when the Studio is locked.
+        details = layout.column()
+        details.enabled = not active.locked
+
+        details.prop(active, "name")
+
+        # Parent / Group on a row so they share width
+        details.prop_search(
+            active, "parent_name",
+            data, "studios",
+            text="Parent",
+            icon='OUTLINER_OB_GROUP_INSTANCE',
+        )
+        details.prop_search(
+            active, "group_name",
+            data, "groups",
+            text="Group",
+            icon='GROUP',
+        )
+
+        # Output Path: field on its own line + a two-line resolved hint
+        # (folder above, filename below) so long paths stay readable.
+        col = details.column(align=True)
+        col.label(text="Output Path:", icon='FILE_FOLDER')
+        col.prop(active, "output_override", text="")
+        try:
+            from ..core.render import resolve_output_path
+            from ..prefs import get_default_output_pattern
+            resolved = resolve_output_path(
+                context.scene, active,
+                get_default_output_pattern(context),
+            )
+            directory, filename = _shorten_for_display(resolved)
+            hint = col.box().column(align=True)
+            hint.scale_y = 0.7
+            if directory:
+                hint.label(text=directory)
+            hint.label(text=filename, icon='FILE_TICK')
+        except Exception:
+            pass
+
+        # Capture toggles compacted into a single row of icon-toggles.
+        # Tooltips come from each property's `name`. Saves 4 vertical rows.
+        details.label(text="Capture:")
+        row = details.row(align=True)
+        row.prop(active, "facet_camera_enabled", text="", icon='OUTLINER_OB_CAMERA', toggle=True)
+        row.prop(active, "facet_world_enabled", text="", icon='WORLD', toggle=True)
+        row.prop(active, "facet_visibility_enabled", text="", icon='HIDE_OFF', toggle=True)
+        row.prop(active, "facet_render_enabled", text="", icon='SCENE', toggle=True)
+        row.prop(active, "facet_output_path_enabled", text="", icon='FILE_TICK', toggle=True)
+
+        details.prop(active, "notes")
+        details.prop(active, "tags")
+
+        # Stored custom properties — only show the body when there's something
+        # to show; the global Lister panel covers cross-Studio search.
+        stored_count = len(active.custom_paths)
+        if stored_count:
+            sbox = details.box()
+            sbox.label(
+                text=f"Stored Properties ({stored_count})",
+                icon='RNA',
+            )
+            for entry in active.custom_paths:
+                row = sbox.row(align=True)
+                row.label(text=entry.data_path)
+                row.label(text=entry.value_repr)
+
+        # Post-render actions
+        pbox = details.box()
+        header = pbox.row(align=True)
+        header.label(
+            text=f"Post-Render Actions ({len(active.post_render_actions)})",
+            icon='SCRIPTPLUGINS',
+        )
+        header.operator("stage.add_post_render_action", icon='ADD', text="")
+        for i, action in enumerate(active.post_render_actions):
+            row = pbox.row(align=True)
+            row.prop(action, "action_type", text="")
+            row.prop(action, "target", text="")
+            op_up = row.operator("stage.move_post_render_action", icon='TRIA_UP', text="")
+            op_up.index = i
+            op_up.direction = 'UP'
+            op_down = row.operator("stage.move_post_render_action", icon='TRIA_DOWN', text="")
+            op_down.index = i
+            op_down.direction = 'DOWN'
+            op_rm = row.operator("stage.remove_post_render_action", icon='X', text="")
+            op_rm.index = i
+            if action.action_type == 'SLACK_WEBHOOK':
+                sub = pbox.row(align=True)
+                sub.label(text="")
+                sub.prop(action, "message", text="Message")
 
 
-class STAGE_PT_bulk_edit(bpy.types.Panel):
+# --- bulk edit -------------------------------------------------------------
+
+
+class STAGE_PT_bulk_edit(Panel):
     """Multi-selection + bulk-edit operators — collapsible subpanel."""
     bl_idname = "STAGE_PT_bulk_edit"
     bl_label = "Bulk Edit"
@@ -226,6 +271,7 @@ class STAGE_PT_bulk_edit(bpy.types.Panel):
     bl_region_type = 'UI'
     bl_category = _CATEGORY
     bl_options = {'DEFAULT_CLOSED'}
+    bl_order = 3
 
     def draw(self, context):
         layout = self.layout
@@ -265,7 +311,48 @@ class STAGE_PT_bulk_edit(bpy.types.Panel):
         col.operator("stage.bulk_remove_tag", icon='REMOVE')
 
 
-_classes = (STAGE_PT_main, STAGE_PT_groups, STAGE_PT_bulk_edit)
+# --- groups ----------------------------------------------------------------
+
+
+class STAGE_PT_groups(Panel):
+    """Studio Groups management — collapsible, default-closed."""
+    bl_idname = "STAGE_PT_groups"
+    bl_label = "Groups"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = _CATEGORY
+    bl_options = {'DEFAULT_CLOSED'}
+    bl_order = 4
+
+    def draw(self, context):
+        layout = self.layout
+        data = context.scene.stage_data
+
+        row = layout.row(align=True)
+        row.label(text=f"{len(data.groups)} group(s)")
+        row.operator("stage.add_group", icon='ADD', text="")
+
+        if not data.groups:
+            layout.label(
+                text="No groups yet. Click + to create a variant axis.",
+                icon='INFO',
+            )
+            return
+
+        for i, group in enumerate(data.groups):
+            row = layout.row(align=True)
+            row.prop(group, "color", text="")
+            row.prop(group, "name", text="")
+            op = row.operator("stage.remove_group", icon='X', text="")
+            op.index = i
+
+
+_classes = (
+    STAGE_PT_main,
+    STAGE_PT_active_studio,
+    STAGE_PT_bulk_edit,
+    STAGE_PT_groups,
+)
 
 
 def register() -> None:

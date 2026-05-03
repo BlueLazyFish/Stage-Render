@@ -42,7 +42,10 @@ class STAGE_PT_queue(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = _CATEGORY
-    bl_options = {'DEFAULT_CLOSED'}
+    # Promoted up the stack: under Active Studio, above Bulk Edit / Groups.
+    # Renders are a primary workflow; the queue panel deserves to be near
+    # the top, not buried at the bottom.
+    bl_order = 2
 
     def draw(self, context):
         layout = self.layout
