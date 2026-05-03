@@ -31,6 +31,7 @@ from stage.queue import paths as queue_paths
 _TEST_DB_DIR: Path | None = None
 _REAL_QUEUE_DB_PATH = queue_paths.queue_db_path
 _REAL_BLEND_FILEPATH_FN = queue_ops._current_blend_filepath
+_REAL_BLEND_DIRTY_FN = queue_ops._current_blend_is_dirty
 
 
 def _redirect_db_to_temp() -> Path:
@@ -54,11 +55,17 @@ def _restore_real_db_path() -> None:
 
 
 def _stub_blend_path(value: str) -> None:
+    """Pretend the .blend lives at ``value`` AND is clean (saved).
+    Tests just want to exercise the operator logic; the in-memory dirty
+    state is a Blender-session quirk that doesn't reflect the test scene.
+    """
     queue_ops._current_blend_filepath = lambda: value  # type: ignore[assignment]
+    queue_ops._current_blend_is_dirty = lambda: False  # type: ignore[assignment]
 
 
 def _restore_blend_path() -> None:
     queue_ops._current_blend_filepath = _REAL_BLEND_FILEPATH_FN  # type: ignore[assignment]
+    queue_ops._current_blend_is_dirty = _REAL_BLEND_DIRTY_FN  # type: ignore[assignment]
 
 
 def _fresh_scene(name: str = "stage_queue_test"):

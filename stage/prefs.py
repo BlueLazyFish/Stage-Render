@@ -92,16 +92,20 @@ class StagePreferences(AddonPreferences):
     # forward across versions.
     user_templates: CollectionProperty(type=UserTemplate)
 
-    # Render queue — when paused, the monitor timer doesn't auto-spawn the
-    # next worker even if PENDING jobs exist. User has to hit "Start Worker"
-    # to kick a single job, or untick Pause to resume auto-processing.
+    # Render queue — when paused (the default), the monitor timer doesn't
+    # auto-spawn workers even if PENDING jobs exist. User has to hit
+    # "Start Worker" to kick a single job, or flip the toggle to enable
+    # automatic processing. Paused-by-default because spawning a Blender
+    # subprocess is a heavyweight side-effect (renders eat CPU/GPU and
+    # write files) that the user should opt into explicitly.
     queue_paused: BoolProperty(
         name="Pause Render Queue",
         description=(
-            "Don't auto-start workers when jobs are queued. Use Start Worker "
-            "to process one job manually, or untick to resume auto-processing"
+            "When ON: queue accepts jobs but doesn't auto-start workers. "
+            "Use Start Worker to process one job at a time. "
+            "When OFF: queue automatically starts the next pending job"
         ),
-        default=False,
+        default=True,
     )
 
     # Logging
@@ -131,11 +135,40 @@ class StagePreferences(AddonPreferences):
         col.prop(self, "viewport_solid_during_render")
 
         col = layout.column(align=True)
+        col.label(text="Render Queue", icon='SCRIPTPLUGINS')
+        col.prop(self, "queue_paused")
+
+        col = layout.column(align=True)
         col.label(text="UI", icon='WINDOW')
         col.prop(self, "show_dirty_badge")
         col.prop(self, "auto_apply_on_select")
         col.prop(self, "enable_pie_menu")
         col.prop(self, "enable_studio_hotkeys")
+
+        # User templates — inline editable list. Lives here rather than in
+        # a popup because invoke_props_dialog from a menu item races with
+        # menu dismissal in Blender; addon prefs is always accessible and
+        # gives the user real management space.
+        box = layout.box()
+        header = box.row(align=True)
+        header.label(
+            text=f"User Render Templates ({len(self.user_templates)})",
+            icon='PRESET',
+        )
+        if not len(self.user_templates):
+            box.label(
+                text="None yet. Use 'Save Current as Template…' from the Stage panel templates menu.",
+                icon='INFO',
+            )
+        else:
+            for i, ut in enumerate(self.user_templates):
+                row = box.row(align=True)
+                row.label(
+                    text=f"{ut.display_name}  —  {ut.engine}  {ut.resolution_x}×{ut.resolution_y}",
+                    icon='PRESET_NEW',
+                )
+                op = row.operator("stage.delete_user_template", icon='X', text="")
+                op.index = i
 
         col = layout.column(align=True)
         col.label(text="Diagnostics", icon='CONSOLE')

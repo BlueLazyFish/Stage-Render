@@ -193,39 +193,29 @@ class STAGE_OT_delete_user_template(Operator):
 
 class STAGE_OT_manage_templates(Operator):
     bl_idname = "stage.manage_templates"
-    bl_label = "Manage User Templates"
-    bl_description = "Browse and delete user-saved render-settings templates"
+    bl_label = "Manage User Templates…"
+    bl_description = (
+        "Open Edit > Preferences > Add-ons > Stage — user templates are "
+        "editable inline there with delete buttons per row"
+    )
     bl_options = {'REGISTER'}
 
-    def invoke(self, context, event):
-        return context.window_manager.invoke_props_dialog(self, width=420)
-
-    def draw(self, context):
-        layout = self.layout
-        prefs = get_prefs(context)
-        if prefs is None:
-            layout.label(text="Addon preferences unavailable.", icon='ERROR')
-            return
-
-        if not len(prefs.user_templates):
-            layout.label(
-                text="No user templates yet. Use 'Save Current as Template…' to create one.",
-                icon='INFO',
-            )
-            return
-
-        layout.label(text=f"{len(prefs.user_templates)} user template(s):")
-        for i, ut in enumerate(prefs.user_templates):
-            row = layout.row(align=True)
-            row.label(
-                text=f"{ut.display_name}  [{ut.engine}  {ut.resolution_x}×{ut.resolution_y}]",
-                icon='PRESET',
-            )
-            op = row.operator("stage.delete_user_template", icon='X', text="")
-            op.index = i
-
     def execute(self, context):
-        # Popup-only operator. No execute work — closing the popup is enough.
+        # Popup dialogs invoked from menu items race with menu dismissal
+        # in Blender, so popups never reliably appear. Sidestep the
+        # whole issue: open the addon-prefs window and scroll to Stage.
+        # The user templates list lives in StagePreferences.draw().
+        try:
+            bpy.ops.screen.userpref_show('INVOKE_DEFAULT')
+            context.preferences.active_section = 'ADDONS'
+            context.window_manager.addon_search = "Stage"
+        except Exception as e:
+            self.report({'WARNING'}, f"Couldn't open preferences: {e}")
+            return {'CANCELLED'}
+        self.report(
+            {'INFO'},
+            "Edit user templates inline in Edit › Preferences › Add-ons › Stage",
+        )
         return {'FINISHED'}
 
 

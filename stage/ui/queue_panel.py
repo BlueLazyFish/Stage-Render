@@ -17,6 +17,7 @@ from __future__ import annotations
 import bpy
 from bpy.types import Panel
 
+from ..ops import queue as queue_ops
 from ..prefs import get_prefs
 from ..queue import db as queue_db
 from ..queue import worker as queue_worker
@@ -75,7 +76,7 @@ class STAGE_PT_queue(Panel):
         # Studio (output path, captured facets, etc.) won't propagate
         # until the user saves. Surface this prominently so they don't
         # hit a queue with stale data.
-        if bpy.data.is_dirty:
+        if queue_ops._current_blend_is_dirty():
             warn = layout.box()
             warn_row = warn.row()
             warn_row.alert = True
@@ -98,13 +99,19 @@ class STAGE_PT_queue(Panel):
 
         # Pause toggle drives auto-spawn behaviour in queue.monitor.
         # When paused the user must hit Start Worker to process one job.
+        # Label describes the CURRENT state plus the action that toggle
+        # would take, so the button is always self-explanatory.
         prefs = get_prefs(context)
         if prefs is not None:
             paused = prefs.queue_paused
             row = col.row(align=True)
             row.prop(
                 prefs, "queue_paused",
-                text="Paused" if paused else "Auto-Process",
+                text=(
+                    "Auto-Render: OFF (queue is paused)"
+                    if paused
+                    else "Auto-Render: ON (queue runs automatically)"
+                ),
                 icon='PAUSE' if paused else 'PLAY',
                 toggle=True,
             )

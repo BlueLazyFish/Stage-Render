@@ -31,6 +31,13 @@ def _current_blend_filepath() -> str:
     return bpy.data.filepath
 
 
+def _current_blend_is_dirty() -> bool:
+    """Indirection over bpy.data.is_dirty so tests can monkeypatch the
+    'has unsaved changes' check (bpy.data.is_dirty is read-only and
+    practically impossible to clear in a shared test session)."""
+    return bpy.data.is_dirty
+
+
 def _blend_path_or_warn(self, context) -> str | None:
     """Return the absolute path of the saved .blend, or report a warning
     and return None if the file is unsaved or has dirty in-memory edits.
@@ -49,7 +56,7 @@ def _blend_path_or_warn(self, context) -> str | None:
             "subprocess loads from disk, so unsaved scenes can't be used.",
         )
         return None
-    if bpy.data.is_dirty:
+    if _current_blend_is_dirty():
         self.report(
             {'ERROR'},
             "Your .blend has unsaved changes. Save first (Ctrl+S) — the "
