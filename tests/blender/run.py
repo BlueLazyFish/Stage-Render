@@ -24,10 +24,22 @@ def _ensure_repo_on_path() -> Path:
 
 
 def _register_addon() -> None:
-    """Import and register Stage so PropertyGroups attach to Scene."""
+    """Import and register Stage so PropertyGroups attach to Scene.
+
+    Also injects an entry into ``bpy.context.preferences.addons`` so
+    ``get_prefs()`` returns a real StagePreferences instance — raw
+    ``stage.register()`` doesn't populate that collection on its own,
+    which would break any test that needs to read or write addon prefs
+    (user templates, output pattern overrides, etc.).
+    """
+    import bpy  # noqa: PLC0415
     import stage  # noqa: PLC0415
 
     stage.register()
+
+    addons = bpy.context.preferences.addons
+    if "stage" not in addons:
+        addons.new().module = "stage"
 
 
 def _discover():

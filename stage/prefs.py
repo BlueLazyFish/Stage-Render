@@ -6,24 +6,36 @@ Hierarchy (see ADDON_PLAN.md §5):
 
 import bpy
 from bpy.types import AddonPreferences
-from bpy.props import StringProperty, BoolProperty, EnumProperty
+from bpy.props import (
+    StringProperty,
+    BoolProperty,
+    EnumProperty,
+    CollectionProperty,
+)
+
+from .props.user_template import UserTemplate
 
 
 # Module-level default so callers (render ops, tests) can fall back to it
 # when the addon hasn't been registered through Blender's extension manager
 # (e.g. raw `import stage; stage.register()` from a Python script doesn't
 # populate context.preferences.addons).
-DEFAULT_OUTPUT_PATTERN = "//{blendname}/{studio}/{frame}.{ext}"
+DEFAULT_OUTPUT_PATTERN = "{blendname}/{studio}/{frame}.{ext}"
 
 
 class StagePreferences(AddonPreferences):
     bl_idname = __package__
 
     # Output
+    # Plain StringProperty (no FILE_PATH subtype) on purpose: the value is
+    # a pattern with {studio}/{frame}/etc. placeholders, not a literal path
+    # — FILE_PATH would emit a RuntimeWarning on the leading "//" when the
+    # .blend isn't saved, and its browse button can't usefully pick a value
+    # for a pattern anyway. Per-Studio output_override stays FILE_PATH (real
+    # path with optional placeholders, browse button is useful there).
     default_output_pattern: StringProperty(
         name="Default Output Pattern",
         description="Default path template applied to every Studio across every scene unless that Studio sets its own override. Supports {studio}, {frame}, {date_time}, etc.",
-        subtype='FILE_PATH',
         default=DEFAULT_OUTPUT_PATTERN,
     )
 
@@ -74,6 +86,11 @@ class StagePreferences(AddonPreferences):
         name="Enable Studio Hotkeys (1-9)",
         default=False,
     )
+
+    # User-defined render-settings templates. Persists across .blend files
+    # because addon prefs live in userpref.blend, which Blender migrates
+    # forward across versions.
+    user_templates: CollectionProperty(type=UserTemplate)
 
     # Logging
     log_level: EnumProperty(
