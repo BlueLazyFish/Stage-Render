@@ -10,11 +10,12 @@ from . import post_render_actions
 from . import groups
 from . import selection
 from . import bulk_edit
+from . import queue
 
 
 _modules = (
     studio_crud, apply, thumbnails, render, store_property, templates,
-    post_render_actions, groups, selection, bulk_edit,
+    post_render_actions, groups, selection, bulk_edit, queue,
 )
 
 
