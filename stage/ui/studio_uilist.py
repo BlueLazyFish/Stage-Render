@@ -55,6 +55,10 @@ class STAGE_UL_studios(UIList):
             # forces layout recalc every frame), and they show better in
             # the grid layout anyway. List view stays snappy this way.
             row = layout.row(align=True)
+            # Multi-select checkbox — orthogonal to active_index. The active
+            # row already has a strong highlight, so this stays subtle until
+            # the user starts ticking rows for bulk edits.
+            row.prop(item, "selected", text="")
             color_sub = row.row()
             color_sub.scale_x = 0.4
             color_sub.prop(item, "color", text="")

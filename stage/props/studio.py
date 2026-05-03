@@ -46,6 +46,16 @@ class Studio(PropertyGroup):
         default=False,
     )
 
+    # Multi-selection — orthogonal to active_index. The UIList shows a
+    # checkbox column; bulk-edit operators act on every Studio with
+    # selected=True. Locked Studios are still selectable but bulk ops skip
+    # them so locked deliverables can't be touched accidentally.
+    selected: BoolProperty(
+        name="Selected",
+        description="Include in bulk-edit operations",
+        default=False,
+    )
+
     # Per-Studio facet toggles — choose which facets this Studio captures/applies
     facet_camera_enabled: BoolProperty(name="Capture Camera", default=True)
     facet_world_enabled: BoolProperty(name="Capture World", default=True)

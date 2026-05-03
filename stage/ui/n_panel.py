@@ -46,7 +46,10 @@ class STAGE_PT_main(Panel):
         col.operator("stage.studio_remove", icon='REMOVE', text="")
         col.separator()
         col.operator("stage.studio_duplicate", icon='DUPLICATE', text="")
-        col.menu("STAGE_MT_templates", icon='PRESET', text="")
+        # wm.call_menu instead of col.menu so the button renders with the
+        # same flat operator style as its siblings — col.menu draws the
+        # menu trigger with a permanently-recessed look in narrow columns.
+        col.operator("wm.call_menu", icon='PRESET_NEW', text="").name = "STAGE_MT_templates"
         col.separator()
         op_up = col.operator("stage.studio_move", icon='TRIA_UP', text="")
         op_up.direction = 'UP'
@@ -64,11 +67,11 @@ class STAGE_PT_main(Panel):
                 row.alert = True
                 row.label(text="● Uncommitted changes", icon='ERROR')
 
-            # Apply / Update — the central operations
+            # Apply / Update — the central operations. Update already
+            # re-renders the thumbnail, so no separate refresh button.
             row = layout.row(align=True)
             row.operator("stage.studio_apply", icon='IMPORT')
             row.operator("stage.studio_update_from_scene", icon='FILE_REFRESH')
-            row.operator("stage.studio_refresh_thumbnail", icon='IMAGE_DATA', text="")
 
             # Render — single Studio or batch all enabled
             row = layout.row(align=True)
@@ -79,9 +82,12 @@ class STAGE_PT_main(Panel):
 
             # Lock toggle — always editable so the user can unlock from the
             # same UI that's otherwise greyed out.
+            # Toggle label between the action ("Lock") and the state
+            # ("Locked") so the button reads correctly in both positions.
             row = box.row()
             row.prop(
                 active, "locked",
+                text="Locked" if active.locked else "Lock",
                 icon='LOCKED' if active.locked else 'UNLOCKED',
             )
 
@@ -196,7 +202,54 @@ class STAGE_PT_groups(bpy.types.Panel):
             op.index = i
 
 
-_classes = (STAGE_PT_main, STAGE_PT_groups)
+class STAGE_PT_bulk_edit(bpy.types.Panel):
+    """Multi-selection + bulk-edit operators — collapsible subpanel."""
+    bl_idname = "STAGE_PT_bulk_edit"
+    bl_label = "Bulk Edit"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = _CATEGORY
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+        data = context.scene.stage_data
+
+        sel = sum(1 for s in data.studios if s.selected)
+        locked = sum(1 for s in data.studios if s.selected and s.locked)
+        layout.label(
+            text=f"{sel} selected ({locked} locked, skipped by edits)",
+            icon='RESTRICT_SELECT_OFF' if sel else 'RESTRICT_SELECT_ON',
+        )
+
+        row = layout.row(align=True)
+        row.operator("stage.select_all", text="All")
+        row.operator("stage.select_none", text="None")
+        row.operator("stage.select_invert", text="Invert")
+
+        if not sel:
+            layout.label(
+                text="Tick the checkbox on Studios to bulk-edit them.",
+                icon='INFO',
+            )
+            return
+
+        col = layout.column(align=True)
+        col.label(text="Apply to selection:")
+        col.operator("stage.bulk_set_group", icon='GROUP')
+        col.operator("stage.bulk_set_parent", icon='OUTLINER_OB_GROUP_INSTANCE')
+        col.operator("stage.bulk_set_color", icon='COLOR')
+        col.operator("stage.bulk_set_output", icon='FILE_FOLDER')
+        col.operator("stage.bulk_set_facet", icon='SETTINGS')
+        col.operator("stage.bulk_set_locked", icon='LOCKED')
+
+        col = layout.column(align=True)
+        col.label(text="Tags:")
+        col.operator("stage.bulk_add_tag", icon='ADD')
+        col.operator("stage.bulk_remove_tag", icon='REMOVE')
+
+
+_classes = (STAGE_PT_main, STAGE_PT_groups, STAGE_PT_bulk_edit)
 
 
 def register() -> None:

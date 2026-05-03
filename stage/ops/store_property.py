@@ -115,13 +115,37 @@ def _draw_context_menu_entry(self, context):
 _classes = (STAGE_OT_toggle_store_property,)
 
 
+_DRAW_FUNC_NAME = "_draw_context_menu_entry"
+
+
+def _purge_stale_draw_funcs() -> None:
+    """Remove any leftover ``_draw_context_menu_entry`` references from
+    prior addon reloads.
+
+    Module reloads (dev workflow, hot-reload addons) re-import this file,
+    which produces a *new* function object — leaving the previously-appended
+    ones orphaned in ``UI_MT_button_context_menu``'s draw list. unregister()
+    can only remove the current module's reference, so without this purge
+    the right-click menu would show "Store in Stage" once per reload.
+    """
+    menu = bpy.types.UI_MT_button_context_menu
+    draw_funcs = getattr(menu, "_dyn_ui_initialize", lambda: [])()
+    for func in list(draw_funcs):
+        if getattr(func, "__name__", "") == _DRAW_FUNC_NAME:
+            try:
+                menu.remove(func)
+            except ValueError:
+                pass
+
+
 def register() -> None:
     for cls in _classes:
         bpy.utils.register_class(cls)
+    _purge_stale_draw_funcs()
     bpy.types.UI_MT_button_context_menu.append(_draw_context_menu_entry)
 
 
 def unregister() -> None:
-    bpy.types.UI_MT_button_context_menu.remove(_draw_context_menu_entry)
+    _purge_stale_draw_funcs()
     for cls in reversed(_classes):
         bpy.utils.unregister_class(cls)
