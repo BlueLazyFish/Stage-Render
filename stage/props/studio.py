@@ -85,8 +85,17 @@ class Studio(PropertyGroup):
         description=(
             "Comma-separated tags (e.g. 'wip, client-a, final'). "
             "Use the filter funnel at the bottom of the Studio list to "
-            "filter by tag — substring matches both name and tags."
+            "filter by tag — substring matches name, tags, and group."
         ),
+        default="",
+    )
+
+    # Group membership — one Studio belongs to at most one group. The group's
+    # metadata (color, etc.) lives on StudioGroup in StudioCollection.groups;
+    # this string is the name lookup. Empty = ungrouped.
+    group_name: StringProperty(
+        name="Group",
+        description="Optional group / variant axis this Studio belongs to",
         default="",
     )
 

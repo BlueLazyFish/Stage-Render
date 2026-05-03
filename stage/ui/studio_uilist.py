@@ -7,7 +7,7 @@ from ..utils.preview_cache import get_icon_id
 
 
 def matches_filter(needle: str, item) -> bool:
-    """Case-insensitive substring match against Studio name OR tags.
+    """Case-insensitive substring match against Studio name, tags, OR group.
 
     Empty needle matches everything. Pulled out of the UIList class so it's
     testable without instantiating a UIList (which Blender doesn't support).
@@ -15,7 +15,11 @@ def matches_filter(needle: str, item) -> bool:
     if not needle:
         return True
     needle_lower = needle.lower()
-    return needle_lower in item.name.lower() or needle_lower in item.tags.lower()
+    return (
+        needle_lower in item.name.lower()
+        or needle_lower in item.tags.lower()
+        or needle_lower in item.group_name.lower()
+    )
 
 
 class STAGE_UL_studios(UIList):

@@ -33,7 +33,11 @@ CURRENT_FORMAT_VERSION = 1
 
 
 class StudioGroup(PropertyGroup):
-    """A variant axis containing related Studios (e.g. 'Cameras', 'Lighting Moods')."""
+    """A variant axis (e.g. 'Cameras', 'Lighting Moods', 'Color Variants').
+
+    Studios reference their group via Studio.group_name; this PropertyGroup
+    just holds the metadata (display name, color marker, expanded UI state).
+    """
 
     name: StringProperty(default="Group")
 
@@ -43,13 +47,6 @@ class StudioGroup(PropertyGroup):
     )
 
     expanded: BoolProperty(default=True)
-
-    # UUIDs of member Studios (comma-separated). Studios live in StudioCollection.studios;
-    # groups are a flat lookup, not an alternate storage location.
-    studio_uuids: StringProperty(
-        description="Comma-separated UUIDs of member Studios",
-        default="",
-    )
 
 
 class StudioCollection(PropertyGroup):

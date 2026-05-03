@@ -100,6 +100,14 @@ class STAGE_PT_main(Panel):
                 icon='OUTLINER_OB_GROUP_INSTANCE',
             )
 
+            # Group membership — variant axis assignment. Empty = ungrouped.
+            details.prop_search(
+                active, "group_name",
+                data, "groups",
+                text="Group",
+                icon='GROUP',
+            )
+
             # Output Path — label on its own line so the field gets full width
             col = details.column(align=True)
             col.label(text="Output Path:")
@@ -156,7 +164,39 @@ class STAGE_PT_main(Panel):
                     sub.prop(action, "message", text="Message")
 
 
-_classes = (STAGE_PT_main,)
+class STAGE_PT_groups(bpy.types.Panel):
+    """Studio Groups management — collapsible subpanel under the Stage tab."""
+    bl_idname = "STAGE_PT_groups"
+    bl_label = "Groups"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = _CATEGORY
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+        data = context.scene.stage_data
+
+        row = layout.row(align=True)
+        row.label(text=f"{len(data.groups)} group(s)")
+        row.operator("stage.add_group", icon='ADD', text="")
+
+        if not data.groups:
+            layout.label(
+                text="No groups yet. Click + to create a variant axis.",
+                icon='INFO',
+            )
+            return
+
+        for i, group in enumerate(data.groups):
+            row = layout.row(align=True)
+            row.prop(group, "color", text="")
+            row.prop(group, "name", text="")
+            op = row.operator("stage.remove_group", icon='X', text="")
+            op.index = i
+
+
+_classes = (STAGE_PT_main, STAGE_PT_groups)
 
 
 def register() -> None:
