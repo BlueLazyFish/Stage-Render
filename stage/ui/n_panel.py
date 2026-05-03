@@ -46,6 +46,7 @@ class STAGE_PT_main(Panel):
         col.operator("stage.studio_remove", icon='REMOVE', text="")
         col.separator()
         col.operator("stage.studio_duplicate", icon='DUPLICATE', text="")
+        col.menu("STAGE_MT_templates", icon='PRESET', text="")
         col.separator()
         op_up = col.operator("stage.studio_move", icon='TRIA_UP', text="")
         op_up.direction = 'UP'
