@@ -7,11 +7,15 @@ from . import facet_world
 from . import facet_camera
 from . import facet_visibility
 from . import facet_render
+from . import post_render_action
 from . import studio
 from . import studio_collection
 
 
-_modules = (stored_prop, facet_world, facet_camera, facet_visibility, facet_render, studio, studio_collection)
+_modules = (
+    stored_prop, facet_world, facet_camera, facet_visibility, facet_render,
+    post_render_action, studio, studio_collection,
+)
 
 
 def register() -> None:

@@ -130,6 +130,31 @@ class STAGE_PT_main(Panel):
                     row.label(text=entry.data_path)
                     row.label(text=entry.value_repr)
 
+            # Post-render actions — execute in declared order after each render
+            box = details.box()
+            header = box.row(align=True)
+            header.label(
+                text=f"Post-Render Actions ({len(active.post_render_actions)})",
+                icon='SCRIPTPLUGINS',
+            )
+            header.operator("stage.add_post_render_action", icon='ADD', text="")
+            for i, action in enumerate(active.post_render_actions):
+                row = box.row(align=True)
+                row.prop(action, "action_type", text="")
+                row.prop(action, "target", text="")
+                op_up = row.operator("stage.move_post_render_action", icon='TRIA_UP', text="")
+                op_up.index = i
+                op_up.direction = 'UP'
+                op_down = row.operator("stage.move_post_render_action", icon='TRIA_DOWN', text="")
+                op_down.index = i
+                op_down.direction = 'DOWN'
+                op_rm = row.operator("stage.remove_post_render_action", icon='X', text="")
+                op_rm.index = i
+                if action.action_type == 'SLACK_WEBHOOK':
+                    sub = box.row(align=True)
+                    sub.label(text="")
+                    sub.prop(action, "message", text="Message")
+
 
 _classes = (STAGE_PT_main,)
 

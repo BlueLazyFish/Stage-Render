@@ -41,19 +41,27 @@ def sanitize_name(name: str) -> str:
     return cleaned or "_"
 
 
-def expand_path(template: str, ctx: dict[str, Any]) -> str:
+def expand_path(template: str, ctx: dict[str, Any], *, sanitize: bool = True) -> str:
     """Expand {var} tokens in template using ctx.
 
     Unknown variables are left as literal {var} rather than raising — fail open.
-    String values are passed through sanitize_name to keep them path-safe.
-    Format specs like {frame:04d} are honored.
+    String values are passed through sanitize_name to keep them path-safe by
+    default. Pass `sanitize=False` for message templates (e.g. Slack webhook
+    body) where path-character substitution would break the user's intent —
+    they want "{output_path}" to expand to the literal path, not its mangled
+    filename-safe form.
+    Format specs like {frame:04d} are honored either way.
     """
     if not template:
         return ""
 
-    safe_ctx: dict[str, Any] = {}
-    for k, v in ctx.items():
-        safe_ctx[k] = sanitize_name(v) if isinstance(v, str) else v
+    if sanitize:
+        safe_ctx: dict[str, Any] = {
+            k: sanitize_name(v) if isinstance(v, str) else v
+            for k, v in ctx.items()
+        }
+    else:
+        safe_ctx = dict(ctx)
 
     def sub(m: re.Match) -> str:
         key = m.group(1)

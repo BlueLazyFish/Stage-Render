@@ -18,6 +18,7 @@ from bpy.types import Operator
 
 from ..core.facets import apply_all
 from ..core.paths import build_default_context, expand_path
+from ..core.post_render import run_actions
 from ..handlers import set_apply_in_progress
 from ..prefs import get_default_output_pattern
 from ..utils.logger import get_logger
@@ -97,6 +98,11 @@ def _render_studio(scene, studio, default_pattern: str, *, frozen_now=None):
                 and window.scene is not saved_active_scene
             ):
                 window.scene = saved_active_scene
+
+        # Post-render actions — walked in declared order. Per-action errors
+        # are swallowed inside run_actions so one bad action doesn't poison
+        # the rest.
+        run_actions(scene, studio, target)
 
         return target
     except Exception as e:

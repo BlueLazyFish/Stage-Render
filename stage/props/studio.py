@@ -20,6 +20,7 @@ from .facet_world import FacetWorld
 from .facet_camera import FacetCamera
 from .facet_visibility import FacetVisibility
 from .facet_render import FacetRender
+from .post_render_action import PostRenderAction
 
 
 class Studio(PropertyGroup):
@@ -121,6 +122,9 @@ class Studio(PropertyGroup):
 
     # Custom-stored RNA paths (right-click → Store in Studio, v1.0)
     custom_paths: CollectionProperty(type=StoredProp)
+
+    # Post-render actions — execute in declared order after each render
+    post_render_actions: CollectionProperty(type=PostRenderAction)
 
 
 def register() -> None:

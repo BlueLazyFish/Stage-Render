@@ -6,9 +6,13 @@ from . import thumbnails
 from . import render
 from . import store_property
 from . import templates
+from . import post_render_actions
 
 
-_modules = (studio_crud, apply, thumbnails, render, store_property, templates)
+_modules = (
+    studio_crud, apply, thumbnails, render, store_property, templates,
+    post_render_actions,
+)
 
 
 def register() -> None:
