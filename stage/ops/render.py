@@ -1,12 +1,10 @@
 """Render operators — render the active Studio or all enabled Studios.
 
-Phase 1 ships synchronous rendering (UI locks during render). v1.0 adds
-subprocess-based background rendering per the plan §5 ("Background
-rendering — the engineering challenge").
-
-Both operators expand each Studio's output path template through
-core.paths.expand_path so {studio}, {date_time}, {frame}, etc. work
-consistently with the right-click → Store and post-render-action paths.
+Both operators delegate to stage.core.render.render_studio_to_disk so
+their output paths and post-render-action behaviour stay identical to
+the queue worker subprocess (stage.queue.render_script). Foreground
+ops pass show_view=True to pop up the Render Result window; the
+subprocess passes show_view=False.
 """
 
 from __future__ import annotations
@@ -16,101 +14,12 @@ import datetime
 import bpy
 from bpy.types import Operator
 
-from ..core.facets import apply_all
-from ..core.paths import build_default_context, expand_path
-from ..core.post_render import run_actions
-from ..handlers import set_apply_in_progress
+from ..core.render import render_studio_to_disk
 from ..prefs import get_default_output_pattern
 from ..utils.logger import get_logger
 
 
 _log = get_logger()
-
-
-# Map Blender file_format → conventional extension. Used to auto-sync the
-# {ext} variable in the path template to whatever the user has set on
-# scene.render.image_settings.file_format.
-_FORMAT_EXT = {
-    'PNG': 'png',
-    'JPEG': 'jpg',
-    'JPEG2000': 'jp2',
-    'OPEN_EXR': 'exr',
-    'OPEN_EXR_MULTILAYER': 'exr',
-    'TIFF': 'tif',
-    'BMP': 'bmp',
-    'TARGA': 'tga',
-    'TARGA_RAW': 'tga',
-    'WEBP': 'webp',
-    'AVI_RAW': 'avi',
-    'AVI_JPEG': 'avi',
-    'FFMPEG': 'mp4',
-}
-
-
-def _render_studio(scene, studio, default_pattern: str, *, frozen_now=None):
-    """Apply the Studio, expand its output path, render a still.
-
-    Returns the output path string on success, None on failure or skip.
-    """
-    if not studio.enabled:
-        return None
-
-    saved_filepath = scene.render.filepath
-
-    set_apply_in_progress(True)
-    try:
-        apply_all(scene, studio)
-
-        template = studio.output_override or default_pattern
-        ctx = build_default_context(
-            studio_name=studio.name,
-            blend_path=bpy.data.filepath,
-            scene=scene,
-            frame=scene.frame_current,
-            frozen_now=frozen_now,
-        )
-        # Sync {ext} to the actual file format the scene is set to render as
-        ctx["ext"] = _FORMAT_EXT.get(
-            scene.render.image_settings.file_format, ctx.get("ext", "png")
-        )
-        scene.render.filepath = expand_path(template, ctx)
-        target = scene.render.filepath
-
-        # bpy.ops.render.render uses bpy.context.scene; ensure it's our scene
-        window = bpy.context.window
-        saved_active_scene = window.scene if window is not None else None
-        if window is not None and saved_active_scene is not scene:
-            window.scene = scene
-
-        try:
-            # Open the Render Result window so progress is visible — same effect
-            # as pressing F12. Best-effort: silently ignore if the operator
-            # rejects in the current context.
-            try:
-                bpy.ops.render.view_show('INVOKE_DEFAULT')
-            except (RuntimeError, TypeError):
-                pass
-            bpy.ops.render.render(write_still=True)
-        finally:
-            if (
-                window is not None
-                and saved_active_scene is not None
-                and window.scene is not saved_active_scene
-            ):
-                window.scene = saved_active_scene
-
-        # Post-render actions — walked in declared order. Per-action errors
-        # are swallowed inside run_actions so one bad action doesn't poison
-        # the rest.
-        run_actions(scene, studio, target)
-
-        return target
-    except Exception as e:
-        _log.warning("Render failed for %s: %s", studio.name, e)
-        return None
-    finally:
-        scene.render.filepath = saved_filepath
-        set_apply_in_progress(False)
 
 
 class STAGE_OT_studio_render_one(Operator):
@@ -127,7 +36,11 @@ class STAGE_OT_studio_render_one(Operator):
     def execute(self, context):
         data = context.scene.stage_data
         studio = data.studios[data.active_index]
-        result = _render_studio(context.scene, studio, get_default_output_pattern(context))
+        result = render_studio_to_disk(
+            context.scene, studio,
+            get_default_output_pattern(context),
+            show_view=True,
+        )
         if result is None:
             self.report({'WARNING'}, f"Render failed or skipped: {studio.name}")
             return {'CANCELLED'}
@@ -160,8 +73,9 @@ class STAGE_OT_studio_render_all(Operator):
         for studio in data.studios:
             if not studio.enabled:
                 continue
-            result = _render_studio(
-                context.scene, studio, default_pattern, frozen_now=frozen,
+            result = render_studio_to_disk(
+                context.scene, studio, default_pattern,
+                frozen_now=frozen, show_view=True,
             )
             if result is not None:
                 rendered.append((studio.name, result))

@@ -98,7 +98,8 @@ def _render_one_job(job_id: int, db_path_arg: str | None) -> int:
                     f"Scene '{scene_name}' not found in the .blend file"
                 )
             scene = bpy.data.scenes[scene_name]
-            bpy.context.window.scene = scene
+            if bpy.context.window is not None:
+                bpy.context.window.scene = scene
 
             studio = _find_studio_by_uuid(scene, job["studio_uuid"])
             if studio is None:
@@ -107,32 +108,31 @@ def _render_one_job(job_id: int, db_path_arg: str | None) -> int:
                     f"'{scene_name}'. Was it deleted after queueing?"
                 )
 
-            # Apply the Studio (walks the parent chain too via apply_studio)
-            from stage.core.inheritance import apply_studio  # noqa: PLC0415
-            from stage.handlers import set_apply_in_progress  # noqa: PLC0415
+            # Use the same render path as the foreground operators —
+            # core.render.render_studio_to_disk handles apply, template
+            # expansion ({studio}/{frame}/{ext} …), addon-prefs fallback
+            # for output, and post-render actions. Without this shared
+            # helper the subprocess used to write to the unexpanded
+            # template literal (or to the .blend's saved render filepath
+            # when the Studio had no override), missing the user's
+            # configured output entirely.
+            from stage.core.render import render_studio_to_disk  # noqa: PLC0415
+            from stage.prefs import get_default_output_pattern  # noqa: PLC0415
 
-            set_apply_in_progress(True)
-            try:
-                apply_studio(scene, studio)
-            finally:
-                set_apply_in_progress(False)
-
-            # Render. Output path is whatever the Studio's render facet /
-            # scene.render.filepath resolved to. We don't override here —
-            # the Studio's apply already set scene.render.filepath if its
-            # output_override / facet_output_path was populated.
-            output_path = scene.render.filepath
+            default_pattern = get_default_output_pattern(bpy.context)
             print(
                 f"render_script: rendering job {job_id} "
-                f"(studio={studio.name!r}) -> {output_path}",
+                f"(studio={studio.name!r}, default_pattern={default_pattern!r})",
                 flush=True,
             )
 
-            # Animation = False renders the current frame as a still.
-            # For multi-frame animations users will set frame_start/end
-            # in the Studio; v1.0 ships single-frame only and we extend
-            # later. (`scene.frame_current` is what gets rendered.)
-            bpy.ops.render.render(write_still=True)
+            output_path = render_studio_to_disk(
+                scene, studio, default_pattern, show_view=False,
+            )
+            if output_path is None:
+                raise RuntimeError(
+                    "render_studio_to_disk returned None — see Blender log"
+                )
 
             queue_db.mark_done(conn, job_id, output_path=output_path)
             print(
