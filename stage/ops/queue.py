@@ -56,6 +56,25 @@ def _enqueue(scene, blend_path: str, studio) -> int:
         )
 
 
+def _scene_is_saved_in_blend(scene_name: str, blend_path: str) -> bool:
+    """Check whether a Scene with this name actually lives in the saved
+    .blend on disk. Catches the case where the active scene is an
+    in-memory test scratch (or a scene the user created but didn't save)
+    that the worker subprocess wouldn't be able to find when it loads
+    the .blend fresh.
+
+    Uses bpy.data.libraries.load() peek mode — streams the metadata
+    block of the .blend without actually importing anything. Cheap.
+    """
+    try:
+        with bpy.data.libraries.load(blend_path) as (data_from, _):
+            return scene_name in list(data_from.scenes)
+    except Exception:
+        # Conservative: if we can't introspect, assume it's fine and let
+        # the subprocess report the real error if it isn't.
+        return True
+
+
 # --- add jobs --------------------------------------------------------------
 
 
@@ -75,9 +94,18 @@ class STAGE_OT_queue_active(Operator):
         if blend_path is None:
             return {'CANCELLED'}
 
+        scene = context.scene
+        if not _scene_is_saved_in_blend(scene.name, blend_path):
+            self.report(
+                {'ERROR'},
+                f"Scene '{scene.name}' isn't in the saved .blend — save the "
+                f"file first (Ctrl+S) so the queue worker can find it.",
+            )
+            return {'CANCELLED'}
+
         data = _data(context)
         studio = data.studios[data.active_index]
-        job_id = _enqueue(context.scene, blend_path, studio)
+        job_id = _enqueue(scene, blend_path, studio)
         self.report({'INFO'}, f"Queued: {studio.name} (job #{job_id})")
         _log.info("Queued job %d: studio=%r", job_id, studio.name)
         return {'FINISHED'}
@@ -94,6 +122,15 @@ class STAGE_OT_queue_selected(Operator):
         if blend_path is None:
             return {'CANCELLED'}
 
+        scene = context.scene
+        if not _scene_is_saved_in_blend(scene.name, blend_path):
+            self.report(
+                {'ERROR'},
+                f"Scene '{scene.name}' isn't in the saved .blend — save the "
+                f"file first (Ctrl+S) so the queue worker can find it.",
+            )
+            return {'CANCELLED'}
+
         data = _data(context)
         targets = [s for s in data.studios if s.selected]
         if not targets:
@@ -102,7 +139,7 @@ class STAGE_OT_queue_selected(Operator):
 
         n = 0
         for studio in targets:
-            _enqueue(context.scene, blend_path, studio)
+            _enqueue(scene, blend_path, studio)
             n += 1
         self.report({'INFO'}, f"Queued {n} Studio(s)")
         _log.info("Queued %d studios from selection", n)
@@ -120,6 +157,15 @@ class STAGE_OT_queue_all_enabled(Operator):
         if blend_path is None:
             return {'CANCELLED'}
 
+        scene = context.scene
+        if not _scene_is_saved_in_blend(scene.name, blend_path):
+            self.report(
+                {'ERROR'},
+                f"Scene '{scene.name}' isn't in the saved .blend — save the "
+                f"file first (Ctrl+S) so the queue worker can find it.",
+            )
+            return {'CANCELLED'}
+
         data = _data(context)
         targets = [s for s in data.studios if s.enabled]
         if not targets:
@@ -127,7 +173,7 @@ class STAGE_OT_queue_all_enabled(Operator):
             return {'CANCELLED'}
 
         for studio in targets:
-            _enqueue(context.scene, blend_path, studio)
+            _enqueue(scene, blend_path, studio)
         self.report({'INFO'}, f"Queued {len(targets)} Studio(s)")
         _log.info("Queued %d enabled studios", len(targets))
         return {'FINISHED'}

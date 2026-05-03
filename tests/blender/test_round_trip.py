@@ -94,6 +94,38 @@ def test_output_path_empty_capture_does_not_overwrite():
     assert scene.render.filepath == "/tmp/keep_this/"
 
 
+def test_output_path_capture_skips_blender_default():
+    """Update Studio while scene.render.filepath is Blender's default
+    ('/tmp/', '', '//') must NOT clobber a user-set output_override —
+    that was the bug where Update silently destroyed the user's path.
+    """
+    scene = _fresh_scene()
+    studio = _new_studio(scene)
+    studio.output_override = "/Users/me/Renders/"
+
+    for default_value in ("/tmp/", "", "//"):
+        scene.render.filepath = default_value
+        capture_all(scene, studio)
+        assert studio.output_override == "/Users/me/Renders/", (
+            f"capture clobbered override on default {default_value!r}: "
+            f"got {studio.output_override!r}"
+        )
+
+
+def test_output_path_capture_overwrites_when_real_path():
+    """A genuine user-set scene.render.filepath SHOULD update the override."""
+    scene = _fresh_scene()
+    studio = _new_studio(scene)
+    studio.output_override = "/Users/me/Renders/"
+
+    scene.render.filepath = "/Users/me/Other/path.png"
+    capture_all(scene, studio)
+
+    assert studio.output_override == "/Users/me/Other/path.png", (
+        f"real path didn't overwrite: {studio.output_override!r}"
+    )
+
+
 # --- world facet ------------------------------------------------------------
 
 
