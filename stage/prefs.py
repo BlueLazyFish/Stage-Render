@@ -59,6 +59,12 @@ class StagePreferences(AddonPreferences):
         default=True,
     )
 
+    auto_apply_on_select: BoolProperty(
+        name="Auto-Apply on Select",
+        description="Apply a Studio's stored state to the scene as soon as it's selected in the Studio list — click-to-preview UX. Off by default since it mutates the scene on every click",
+        default=False,
+    )
+
     enable_pie_menu: BoolProperty(
         name="Enable Studio Pie Menu",
         default=False,
@@ -98,6 +104,7 @@ class StagePreferences(AddonPreferences):
         col = layout.column(align=True)
         col.label(text="UI", icon='WINDOW')
         col.prop(self, "show_dirty_badge")
+        col.prop(self, "auto_apply_on_select")
         col.prop(self, "enable_pie_menu")
         col.prop(self, "enable_studio_hotkeys")
 

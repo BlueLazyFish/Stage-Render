@@ -17,6 +17,17 @@ from bpy.props import (
 from .studio import Studio
 
 
+def _on_active_index_change(self, context) -> None:
+    """Forward to stage.core.auto_apply.on_active_index_change.
+
+    Imported lazily because core.auto_apply imports from core.inheritance
+    which imports from core.facets, and we don't want to widen the props
+    package's import surface or risk a circular import at module load.
+    """
+    from ..core.auto_apply import on_active_index_change
+    on_active_index_change(self, context)
+
+
 # Bump on every breaking schema change. core/migration.py reads this.
 CURRENT_FORMAT_VERSION = 1
 
@@ -49,6 +60,7 @@ class StudioCollection(PropertyGroup):
         name="Active Studio Index",
         default=0,
         description="Invariant: 0 ≤ active_index < len(studios) when non-empty",
+        update=lambda self, context: _on_active_index_change(self, context),
     )
 
     format_version: IntProperty(
