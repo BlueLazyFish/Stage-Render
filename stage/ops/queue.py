@@ -33,13 +33,28 @@ def _current_blend_filepath() -> str:
 
 def _blend_path_or_warn(self, context) -> str | None:
     """Return the absolute path of the saved .blend, or report a warning
-    and return None if the file is unsaved."""
+    and return None if the file is unsaved or has dirty in-memory edits.
+
+    The dirty-edit check is the silent footgun: the user changes a Studio's
+    output_override in the panel, hits Queue, and the subprocess loads the
+    .blend from disk — which still has the OLD override. The render goes
+    somewhere unexpected with no visible error. Refuse here so the user
+    knows to save first.
+    """
     path = _current_blend_filepath()
     if not path:
         self.report(
             {'ERROR'},
             "Save the .blend file before queueing renders — the worker "
             "subprocess loads from disk, so unsaved scenes can't be used.",
+        )
+        return None
+    if bpy.data.is_dirty:
+        self.report(
+            {'ERROR'},
+            "Your .blend has unsaved changes. Save first (Ctrl+S) — the "
+            "queue worker loads from disk and won't see in-memory edits "
+            "like a freshly-typed output path.",
         )
         return None
     return path

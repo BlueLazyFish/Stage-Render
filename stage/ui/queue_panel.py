@@ -70,6 +70,20 @@ class STAGE_PT_queue(Panel):
             icon='RENDER_RESULT',
         )
 
+        # Unsaved-changes warning — the silent footgun. The worker
+        # subprocess reads the .blend from disk; in-memory edits to a
+        # Studio (output path, captured facets, etc.) won't propagate
+        # until the user saves. Surface this prominently so they don't
+        # hit a queue with stale data.
+        if bpy.data.is_dirty:
+            warn = layout.box()
+            warn_row = warn.row()
+            warn_row.alert = True
+            warn_row.label(
+                text="Unsaved changes — Ctrl+S before queueing",
+                icon='ERROR',
+            )
+
         # Toolbar — add jobs
         col = layout.column(align=True)
         col.label(text="Add to queue:")
