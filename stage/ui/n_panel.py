@@ -114,10 +114,26 @@ class STAGE_PT_main(Panel):
                 icon='GROUP',
             )
 
-            # Output Path — label on its own line so the field gets full width
+            # Output Path — label on its own line so the field gets full width.
+            # Below the field we show the resolved path (after template
+            # expansion + directory-fallback rules) so the user can see
+            # exactly where a render would land before they click Render
+            # or Queue. Empty override = falls back to the addon-prefs
+            # default pattern shown above.
             col = details.column(align=True)
             col.label(text="Output Path:")
             col.prop(active, "output_override", text="")
+            try:
+                from ..core.render import resolve_output_path
+                from ..prefs import get_default_output_pattern
+                resolved = resolve_output_path(
+                    context.scene, active,
+                    get_default_output_pattern(context),
+                )
+                hint = col.row()
+                hint.label(text=f"→ {resolved}", icon='FILE_TICK')
+            except Exception:
+                pass
 
             # Facet capture toggles — what this Studio remembers
             fcol = details.column(align=True)

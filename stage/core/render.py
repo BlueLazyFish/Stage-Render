@@ -46,13 +46,67 @@ _FORMAT_EXT = {
 }
 
 
+def _looks_like_directory(path: str) -> bool:
+    """True if this looks like a folder path the user picked via the browse
+    button rather than a full filename pattern.
+
+    Heuristic: no {tokens} AND (ends with a path separator OR has no extension).
+    A path with tokens is assumed intentional and used as-is. A path with an
+    extension and no tokens is a single-file output (one Studio scenario,
+    user accepts the overwrite if they queue multiple).
+    """
+    if not path:
+        return False
+    if "{" in path and "}" in path:
+        return False
+    if path.endswith(("/", "\\")):
+        return True
+    # No separator at end — check if there's a file extension on the leaf
+    leaf = path.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+    return "." not in leaf
+
+
+# Filename used when the user picks a folder via the browse button. Both
+# {studio} and {frame} are included so distinct Studios queued together
+# produce distinct files (the bug that motivated this whole helper) and
+# multi-frame animations don't overwrite themselves.
+_DIR_FALLBACK_FILENAME = "{studio}_{frame:04d}.{ext}"
+
+
+def _join_dir_and_filename(directory: str, filename: str) -> str:
+    """Concatenate, normalising the separator between them. Preserves the
+    leading '//' blend-relative prefix on the directory."""
+    if directory.endswith(("/", "\\")):
+        return directory + filename
+    return directory + "/" + filename
+
+
 def resolve_output_path(scene, studio, default_pattern: str, *, frozen_now=None) -> str:
     """Pure function: compute the expanded output path for this Studio.
+
+    Behaviour:
+      - Empty override: use default_pattern
+      - Override is a *directory* (no tokens, ends with / or no extension):
+          combine override (directory) with the default_pattern's filename
+          portion, so the user can pick a folder via the browse button
+          and still get distinct per-Studio filenames.
+      - Override has tokens or looks like a file: use override as-is.
 
     No side effects on the scene. Use this when you need to know where a
     render WOULD go without actually running the render.
     """
-    template = studio.output_override or default_pattern
+    override = studio.output_override
+    if not override:
+        template = default_pattern
+    elif _looks_like_directory(override):
+        # default_pattern's filename portion isn't safe to reuse here —
+        # if it's just "{frame}.{ext}" then every Studio collides on the
+        # same file. Use a guaranteed-distinct {studio}_{frame:04d}.{ext}
+        # template instead.
+        template = _join_dir_and_filename(override, _DIR_FALLBACK_FILENAME)
+    else:
+        template = override
+
     ctx = build_default_context(
         studio_name=studio.name,
         blend_path=bpy.data.filepath,

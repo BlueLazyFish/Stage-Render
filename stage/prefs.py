@@ -92,6 +92,18 @@ class StagePreferences(AddonPreferences):
     # forward across versions.
     user_templates: CollectionProperty(type=UserTemplate)
 
+    # Render queue — when paused, the monitor timer doesn't auto-spawn the
+    # next worker even if PENDING jobs exist. User has to hit "Start Worker"
+    # to kick a single job, or untick Pause to resume auto-processing.
+    queue_paused: BoolProperty(
+        name="Pause Render Queue",
+        description=(
+            "Don't auto-start workers when jobs are queued. Use Start Worker "
+            "to process one job manually, or untick to resume auto-processing"
+        ),
+        default=False,
+    )
+
     # Logging
     log_level: EnumProperty(
         name="Log Level",

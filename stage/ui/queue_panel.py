@@ -17,6 +17,7 @@ from __future__ import annotations
 import bpy
 from bpy.types import Panel
 
+from ..prefs import get_prefs
 from ..queue import db as queue_db
 from ..queue import worker as queue_worker
 
@@ -80,6 +81,20 @@ class STAGE_PT_queue(Panel):
         # Toolbar — control
         col = layout.column(align=True)
         col.label(text="Control:")
+
+        # Pause toggle drives auto-spawn behaviour in queue.monitor.
+        # When paused the user must hit Start Worker to process one job.
+        prefs = get_prefs(context)
+        if prefs is not None:
+            paused = prefs.queue_paused
+            row = col.row(align=True)
+            row.prop(
+                prefs, "queue_paused",
+                text="Paused" if paused else "Auto-Process",
+                icon='PAUSE' if paused else 'PLAY',
+                toggle=True,
+            )
+
         row = col.row(align=True)
         row.enabled = queue_worker.is_worker_alive()
         row.operator("stage.queue_cancel_active", icon='CANCEL')

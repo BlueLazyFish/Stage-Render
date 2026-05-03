@@ -35,6 +35,18 @@ def _tag_redraw() -> None:
                 area.tag_redraw()
 
 
+def _is_queue_paused() -> bool:
+    """True if the user has ticked Pause Render Queue in addon prefs.
+    Returns False on any lookup error (no prefs entry, etc.) so the queue
+    keeps running rather than silently stalling."""
+    try:
+        from ..prefs import get_prefs
+        prefs = get_prefs(bpy.context)
+        return bool(prefs and prefs.queue_paused)
+    except Exception:
+        return False
+
+
 def _tick() -> float:
     """Single timer iteration. Returns POLL_INTERVAL_SECONDS so the timer
     fires again, or None to stop."""
@@ -43,10 +55,13 @@ def _tick() -> float:
         if finished_job_id is not None:
             _log.info("Queue: job %d finished", finished_job_id)
 
-        # Spawn next pending job if no worker is currently busy
-        spawned = queue_worker.spawn_next()
-        if spawned is not None:
-            _log.info("Queue: spawned worker for job %d", spawned)
+        # Auto-spawn unless the user has paused the queue. Pause respects
+        # the existing worker — a job that's already running keeps going;
+        # we just don't pick up the next one.
+        if not _is_queue_paused():
+            spawned = queue_worker.spawn_next()
+            if spawned is not None:
+                _log.info("Queue: spawned worker for job %d", spawned)
 
         _tag_redraw()
     except Exception as e:

@@ -79,6 +79,70 @@ def test_resolve_output_path_preserves_blender_relative_prefix():
     assert "Hero" in path
 
 
+# --- directory-like override fallback (the queue overwrite bug) ----------
+
+
+def test_directory_override_uses_studio_frame_filename():
+    """User picks a folder — result is <folder>/<studio>_<frame>.<ext>
+    so distinct Studios produce distinct files (no shared filename)."""
+    scene = _fresh_scene()
+    studio = _make_studio(scene, "Hero", output_override="/Users/me/Renders/")
+
+    path = resolve_output_path(
+        scene, studio,
+        default_pattern="{blendname}/{studio}/{frame}.{ext}",
+    )
+    assert path == "/Users/me/Renders/Hero_0001.png", f"unexpected: {path}"
+
+
+def test_directory_override_without_trailing_slash_still_treated_as_dir():
+    """A leaf with no extension reads as a folder, even without trailing slash."""
+    scene = _fresh_scene()
+    studio = _make_studio(scene, "Hero", output_override="/Users/me/Renders")
+
+    path = resolve_output_path(
+        scene, studio, default_pattern="ignored",
+    )
+    assert path == "/Users/me/Renders/Hero_0001.png", f"unexpected: {path}"
+
+
+def test_directory_override_distinct_per_studio():
+    """Two Studios with the same folder override must resolve to distinct files."""
+    scene = _fresh_scene()
+    a = _make_studio(scene, "Hero", output_override="/r/")
+    b = _make_studio(scene, "Wide", output_override="/r/")
+
+    pa = resolve_output_path(scene, a, default_pattern="ignored")
+    pb = resolve_output_path(scene, b, default_pattern="ignored")
+    assert pa != pb, "distinct studios must produce distinct output paths"
+    assert "Hero" in pa
+    assert "Wide" in pb
+
+
+def test_override_with_extension_used_as_is():
+    """`.png` leaf means the user is intentionally writing one file —
+    don't second-guess them."""
+    scene = _fresh_scene()
+    studio = _make_studio(scene, "Hero", output_override="/r/output.png")
+
+    path = resolve_output_path(
+        scene, studio, default_pattern="{studio}/{frame}.{ext}",
+    )
+    assert path == "/r/output.png", f"expected as-is, got {path}"
+
+
+def test_override_with_tokens_used_as_is():
+    """Override containing {tokens} is intentional — use it directly
+    even if it doesn't have a file extension."""
+    scene = _fresh_scene()
+    studio = _make_studio(
+        scene, "Hero", output_override="/r/{studio}_{frame:04d}.{ext}",
+    )
+
+    path = resolve_output_path(scene, studio, default_pattern="ignored")
+    assert path == "/r/Hero_0001.png", f"unexpected expansion: {path}"
+
+
 def test_foreground_and_subprocess_paths_match():
     """The whole point of extracting core/render.resolve_output_path —
     foreground and subprocess MUST produce identical paths for the same
