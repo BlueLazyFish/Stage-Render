@@ -14,6 +14,11 @@ from pathlib import Path
 import bpy
 import bpy.utils.previews
 
+from .logger import get_logger
+
+
+_log = get_logger()
+
 
 _pcoll = None
 
@@ -52,8 +57,20 @@ def invalidate(uuid: str) -> None:
 
 
 def cleanup() -> None:
-    """Clear the preview collection. Called on addon unregister."""
+    """Clear the preview collection. Called on addon unregister.
+
+    `bpy.utils.previews.remove()` can raise on shutdown paths where the
+    Blender preview manager has already torn itself down. Wrapping in
+    try/except ensures the global state is consistently reset to None
+    either way — otherwise an exception here would leave a dangling
+    reference and trigger the ResourceWarning on next interpreter exit.
+    """
     global _pcoll
-    if _pcoll is not None:
+    if _pcoll is None:
+        return
+    try:
         bpy.utils.previews.remove(_pcoll)
+    except Exception as e:
+        _log.warning("preview_cache cleanup failed: %s: %s", type(e).__name__, e)
+    finally:
         _pcoll = None

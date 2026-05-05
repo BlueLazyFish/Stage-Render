@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "stage"
-version = "0.1.0"
+version = "0.1.1"
 name = "Stage"
 tagline = "Scene state manager and render queue"
 maintainer = "Louis Rist <BlueLazyFish@users.noreply.github.com>"

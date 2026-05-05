@@ -84,6 +84,20 @@ def spawn_next() -> Optional[int]:
         # Try the next one (recursive — bounded by number of pending jobs)
         return spawn_next()
 
+    # Defensive: refuse blend paths that look like CLI flags or contain
+    # NUL bytes. Even though Popen's list-form prevents argv injection,
+    # Blender's own argv parser might mistake a `-`-prefixed positional
+    # for a flag and re-route subsequent args (the .blend would be
+    # treated as a flag and our render_script would become the .blend).
+    # NUL bytes have caused execve weirdness on some platforms.
+    if blend_path.startswith("-") or "\x00" in blend_path:
+        with queue_db.connect() as conn:
+            queue_db.mark_failed(
+                conn, job_id,
+                error_message=f"Refusing suspicious blend path: {blend_path!r}",
+            )
+        return spawn_next()
+
     cmd = [
         bpy.app.binary_path,
         "-b", str(blend_path),

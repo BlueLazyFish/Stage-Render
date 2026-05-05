@@ -41,13 +41,87 @@ VECTOR = 'VECTOR'
 COLOR = 'COLOR'
 
 
+class UnsafePathError(ValueError):
+    """Raised when a stored data_path contains constructs we don't allow."""
+
+
+# Allowed AST nodes for a constrained path expression. Notably absent:
+# Call (no function calls), BinOp/Compare/BoolOp (no expressions), Lambda /
+# Comprehension / GeneratorExp / IfExp / Starred / FormattedValue / JoinedStr
+# (no fancy syntax). The only things needed for real RNA paths are attribute
+# access and constant subscripts.
+_ALLOWED_NODES: tuple[type, ...] = (
+    ast.Expression, ast.Name, ast.Attribute, ast.Subscript, ast.Constant,
+    ast.Load, ast.Index,  # Index is for older Python AST shapes; harmless on 3.9+
+)
+
+# Only `bpy` is permitted as a root identifier. Everything else (e.g.
+# `__import__`, builtins, captured names) is refused outright.
+_ALLOWED_ROOTS: frozenset[str] = frozenset({"bpy"})
+
+
+def _validate_ast(node: ast.AST) -> None:
+    """Walk the parsed expression and raise on anything not in the allowlist.
+
+    Constrains the path to attribute access (`a.b.c`) and constant subscripts
+    (`a["key"]`, `a[3]`). Refuses calls, comprehensions, arithmetic, etc.
+    This is the security boundary — once an AST passes here, eval() can be
+    used safely on the original source string because we've proven it has
+    no executable parts.
+    """
+    for child in ast.walk(node):
+        if not isinstance(child, _ALLOWED_NODES):
+            raise UnsafePathError(
+                f"Disallowed AST node {type(child).__name__} in stored data_path"
+            )
+        if isinstance(child, ast.Subscript):
+            # Subscript index must be a constant string or int. (On Python
+            # 3.9+ the slice is the value directly; older Pythons wrap in
+            # ast.Index which we permit above.)
+            slice_node = getattr(child, "slice", None)
+            if isinstance(slice_node, ast.Index):  # pre-3.9 compat
+                slice_node = slice_node.value
+            if not isinstance(slice_node, ast.Constant):
+                raise UnsafePathError(
+                    "Subscript index must be a literal string or int"
+                )
+            if not isinstance(slice_node.value, (str, int)):
+                raise UnsafePathError(
+                    f"Subscript index must be str or int, got {type(slice_node.value).__name__}"
+                )
+        if isinstance(child, ast.Name):
+            if child.id not in _ALLOWED_ROOTS:
+                raise UnsafePathError(
+                    f"Disallowed root identifier {child.id!r} — only {sorted(_ALLOWED_ROOTS)} are permitted"
+                )
+
+
 def _eval_path(path: str):
-    """Evaluate a 'bpy.*' path safely (paths come from right-click ctx, trusted)."""
-    return eval(path, {"bpy": bpy, "__builtins__": {}})
+    """Evaluate a stored 'bpy.*' path string into a runtime object.
+
+    Hardened against malicious .blend files that ship a poisoned
+    ``Studio.custom_paths[*].data_path`` aimed at executing arbitrary
+    Python on Apply Studio. We parse the expression, walk the AST to
+    confirm it's only attribute access + constant subscripts rooted in
+    `bpy`, and only then evaluate. Anything more exotic raises
+    UnsafePathError.
+    """
+    try:
+        tree = ast.parse(path, mode="eval")
+    except SyntaxError as e:
+        raise UnsafePathError(f"Invalid path syntax: {e}") from e
+    _validate_ast(tree)
+    # eval is safe here — we've proven the AST has no executable parts.
+    # Empty __builtins__ is belt-and-braces; the AST validator already blocks
+    # everything dangerous.
+    return eval(  # noqa: S307 — input is AST-validated above
+        compile(tree, "<stage-data-path>", "eval"),
+        {"bpy": bpy, "__builtins__": {}},
+    )
 
 
 def resolve_value(path: str):
-    """Read the current value at `path`. Raises on bad path."""
+    """Read the current value at `path`. Raises on bad or unsafe path."""
     return _eval_path(path)
 
 

@@ -19,7 +19,7 @@ import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
-from urllib import error as urlerror, request as urlrequest
+from urllib import error as urlerror, parse as urlparse, request as urlrequest
 
 import bpy
 
@@ -121,11 +121,28 @@ def play_sound(action, scene, studio, output_path: str) -> None:
 
 _DEFAULT_SLACK_MESSAGE = "Render complete: {studio} -> {output_path}"
 
+# Only HTTP(S) webhooks are allowed. Without this, a poisoned .blend
+# could ship a `file://` or `gopher://` URL and use urllib's default
+# handlers to read local files / probe internal services. Slack and
+# every comparable service uses HTTPS in practice; HTTP is permitted
+# for self-hosted dev relays.
+_ALLOWED_WEBHOOK_SCHEMES: frozenset[str] = frozenset({"http", "https"})
+
 
 def slack_webhook(action, scene, studio, output_path: str) -> None:
     url = action.target.strip()
     if not url:
         _log.warning("SLACK_WEBHOOK: empty URL")
+        return
+    parsed = urlparse.urlparse(url)
+    if parsed.scheme not in _ALLOWED_WEBHOOK_SCHEMES:
+        _log.warning(
+            "SLACK_WEBHOOK: refusing scheme %r — only %s are allowed",
+            parsed.scheme, sorted(_ALLOWED_WEBHOOK_SCHEMES),
+        )
+        return
+    if not parsed.netloc:
+        _log.warning("SLACK_WEBHOOK: URL has no host: %r", url)
         return
     template = action.message or _DEFAULT_SLACK_MESSAGE
     text = _expanded_message(template, scene, studio, output_path)
