@@ -4,7 +4,7 @@ id = "stage"
 version = "0.1.0"
 name = "Stage"
 tagline = "Scene state manager and render queue"
-maintainer = "Louis Rist <you@example.com>"
+maintainer = "Louis Rist <BlueLazyFish@users.noreply.github.com>"
 type = "add-on"
 
 blender_version_min = "5.1.0"
